@@ -312,4 +312,49 @@ app:get("pay", "/pay", function(self)
   end)
 end)
 
+function read_orders()
+   local restable={}
+--   local row={}
+   local conn= env:connect("/var/local/meals/meals.db")
+   local query="select age,name,meal from orders where ready is null order by age"
+   local res,err= conn:execute(query)
+   if not res then sqlerror=err 
+   else
+     local res2=res:fetch({},"a")
+     while res2 do
+       restable[#restable+1]=res2
+       res2=res:fetch({},"a")
+     end
+     res:close()
+   end
+   conn:close()
+   return restable
+end
+
+function format_number(x)
+  local hours=math.floor(x/3600)
+  x=x-hours*3600
+  local min=math.floor(x/60)
+  x=x-min*60
+  return string.format("%d:%02d:%02d", hours, min, x)
+end
+
+app:get("kitchen", "/kitchen", function(self)
+  local orders= read_orders()
+  local now= os.time()
+  return self:html(function()
+  	h2("Bestellungen")
+        element("table", {width="100%"}, function()
+ 	  for i=1,#orders do
+              tr(function() 
+                      td(format_number(now-orders[i].age))
+                      td({align="center",bgcolor="yellow"},orders[i].name)
+                      td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
+                      td({align="center",bgcolor="green"},"Ok")
+                 end)
+          end
+         end)
+  end)
+end)
+
 return app
