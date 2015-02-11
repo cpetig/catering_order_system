@@ -144,14 +144,14 @@ function selectseat_widget(self,vars)
                   td(function()
                   	a({href=self:url_for("deliver")},"Liefern")
                     end)
-                  td(function()
+                  td({align="center",bgcolor="red"},function()
                   	a({href=self:url_for("pay")},"Zahlen") 
                     end)
           end)
           for i=1,2 do
             tr(function()
             	for j=1,3 do
-                  td(function() 
+                  td({align="center",bgcolor="yellow"},function() 
                   	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+i*3-3+j])},tostring(list[pagestart+i*3-3+j]))
                      end)
                 end
@@ -159,7 +159,7 @@ function selectseat_widget(self,vars)
           end
           tr(function()
             	for j=1,2 do
-                  td(function() 
+                  td({align="center",bgcolor="yellow"},function() 
                   	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+9-3+j])},tostring(list[pagestart+9-3+j]))
                      end)
                 end
@@ -176,29 +176,31 @@ end
 function selectmeal_widget(self,vars)
     return function()
       if sqlerror then text(sqlerror) end
+--      p({style="font-size: x-large;"},function()
       element("table", {width="100%"}, function()
       --'<table width="100%">'
           tr(function() 
-                  td(function()
-                  	a({href=self:url_for("seatpage")},tonumber(vars.seat))
+                  td({align="center",bgcolor="yellow"},function()
+                  	a({href=self:url_for("seatpage")},tostring(vars.seat))
                     end)
                   td(function()
                   	a({href=self:url_for("deliver")},"Liefern")
                     end)
-                  td(function()
+                  td({align="center",bgcolor="red"},function()
                   	a({href=self:url_for("pay")},"Zahlen") 
                     end)
           end)
           for i=1,3 do
             tr(function() 
             	for j=1,3 do
-                  td(function()
-                  	a({href=self:url_for("order").."?meal="..tonumber(i*3-2)},essen[i*3-3+j])
+                  td({align="center",bgcolor="lightgreen"},function()
+                  	a({href=self:url_for("order").."?meal="..tostring(i*3-3+j)},essen[i*3-3+j])
                   end)
                 end
             end)
           end
       end)
+--      end)
     end
 end
 
@@ -267,7 +269,7 @@ app:get("order", "/order", function(self)
   local vars= getvars(ngx.var.remote_addr)
   local meal= self.params.meal
   return self:html(function()
-  	h2("Meal "..essen[tonumber(meal)].." for "..tonumber(vars.seat).." by "..vars.name.." at "..preis[tonumber(meal)].."E")
+  	h2("Meal "..essen[tonumber(meal)].." for "..tostring(vars.seat).." by "..vars.name.." at "..tostring(preis[tonumber(meal)]).."E")
   	text(table_print(vars))
   end)
 end)
