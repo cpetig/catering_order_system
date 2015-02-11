@@ -9,7 +9,7 @@ local sqlerror
 --users={}
 essen={"Bier", "alkfrei", "Frikadelle", 
 	"Salzstangen", "KartSalat", "Sekt",
-	"Wurst", "Wasser", "Zurück" }
+	"Wurst", "Wasser", "Sonstwas" }
 preis={1.00, 1.00, 2.00,
 	0.5, 3.00, 4.00,
 	1.5, 1.5, 0.00 }
@@ -120,16 +120,12 @@ function selectseat_widget(self,vars)
                   td("Zahlen") 
           end)
           for i=1,3 do
-            tr(function() 
+            tr(function()
+            	for j=1,3 do
                   td(function() 
-                  	a({href=self:url_for("seat").."?seat="..tonumber(vars.seat+i*3-7)},tonumber(vars.seat+i*3-7))
+                  	a({href=self:url_for("seat").."?seat="..tonumber(vars.seat+i*3-7)},tonumber(vars.seat+i*3-8+j))
                      end)
-                  td(function() 
-                  	a({href=self:url_for("seat").."?seat="..tonumber(vars.seat+i*3-6)},tonumber(vars.seat+i*3-6))
-                     end)
-                  td(function() 
-                  	a({href=self:url_for("seat").."?seat="..tonumber(vars.seat+i*3-5)},tonumber(vars.seat+i*3-5))
-                     end)
+                end
             end)
           end
       end)
@@ -148,15 +144,11 @@ function selectmeal_widget(self,vars)
           end)
           for i=1,3 do
             tr(function() 
+            	for j=1,3 do
                   td(function()
-                  	a({href=self:url_for("order").."?meal="..tonumber(i*3-2)},essen[i*3-2])
+                  	a({href=self:url_for("order").."?meal="..tonumber(i*3-2)},essen[i*3-3+j])
                   end)
-                  td(function()
-                  	a({href=self:url_for("order").."?meal="..tonumber(i*3-1)},essen[i*3-1])
-                  end)
-                  td(function()
-                  	a({href=self:url_for("order").."?meal="..tonumber(i*3-0)},essen[i*3-0])
-                  end)
+                end
             end)
           end
       end)
