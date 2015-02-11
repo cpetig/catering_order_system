@@ -173,6 +173,22 @@ function selectseat_widget(self,vars)
     end
 end
 
+function order_statistics(seat)
+   local conn= env:connect("/var/local/meals/meals.db")
+   local res= os.time()
+   local open=0
+   local query="select count(age) from orders where delivered is null and seat="..tostring(seat)
+   local res,err= conn:execute(query)
+   if not res then sqlerror=err 
+   else
+     local res2=res:fetch()
+     open=res2 or 0
+     res:close()
+   end
+   conn:close()
+   return string.format("%d offene Bestellungen", open)
+end
+
 function selectmeal_widget(self,vars)
     return function()
       if sqlerror then text(sqlerror) end
@@ -200,6 +216,8 @@ function selectmeal_widget(self,vars)
             end)
           end
       end)
+      br()
+      text(order_statistics(vars.seat))
 --      end)
     end
 end
@@ -265,13 +283,21 @@ app:get("seat", "/seat", function(self)
   return self:html(selectmeal_widget(self,vars))  
 end)
 
+function store_order(name,seat,meal)
+   local conn= env:connect("/var/local/meals/meals.db")
+   local now= os.time()
+   local query="insert into orders (age,name,seat,meal) "
+     	.."values ("..tostring(now)..",'"..name.."',"..tostring(seat)..","..tostring(meal)..")"
+   local res,err= conn:execute(query)
+   if not res then sqlerror=err end
+   conn:close()
+end
+
 app:get("order", "/order", function(self)
   local vars= getvars(ngx.var.remote_addr)
-  local meal= self.params.meal
-  return self:html(function()
-  	h2("Meal "..essen[tonumber(meal)].." for "..tostring(vars.seat).." by "..vars.name.." at "..tostring(preis[tonumber(meal)]).."E")
-  	text(table_print(vars))
-  end)
+  local meal= tonumber(self.params.meal)
+  store_order(vars.name,vars.seat,meal)
+  return self:html(selectmeal_widget(self,vars))  
 end)
 
 app:get("deliver", "/deliver", function(self)
