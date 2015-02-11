@@ -108,8 +108,33 @@ function table_print (tt,depth)
   end
 end
 
+function create_seatlist(vars)
+  local res={}
+  for i=1,4 do
+    if vars.range[i][1] and vars.range[i][1]>0 then
+      for j=vars.range[i][1],vars.range[i][2] do
+        res[#res+1]=j
+      end
+    end
+  end
+  return res
+end
+
 function selectseat_widget(self,vars)
-    if vars.seat<5 then vars.seat=5 end
+    local list= create_seatlist(vars)
+    -- complete to 9 elements
+    local missing= 9-#list
+    for i=1,missing do 
+      list[#list+1]=list[i]
+    end
+    local posinlist=1
+    for i=1,#list do
+      if vars.seat>=list[i] then 
+        posinlist=i
+      end
+    end
+    local pagestart=math.floor((posinlist-1)/8)*8
+    if pagestart+8>#list then pagestart=#list-8 end
     return function()
       if sqlerror then text(sqlerror) end
       element("table", {width="100%"}, function()
@@ -119,15 +144,27 @@ function selectseat_widget(self,vars)
                   td("Liefern")
                   td("Zahlen") 
           end)
-          for i=1,3 do
+          for i=1,2 do
             tr(function()
             	for j=1,3 do
                   td(function() 
-                  	a({href=self:url_for("seat").."?seat="..tonumber(vars.seat+i*3-7)},tonumber(vars.seat+i*3-8+j))
+                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+i*3-3+j])},tostring(list[pagestart+i*3-3+j]))
                      end)
                 end
             end)
           end
+          tr(function()
+            	for j=1,2 do
+                  td(function() 
+                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+9-3+j])},tostring(list[pagestart+9-3+j]))
+                     end)
+                end
+                td(function()
+       			local newstart=pagestart+9
+       			if newstart>#list then newstart=1 end
+                  	a({href=self:url_for("seatpage").."?start="..tostring(list[newstart])},">>")
+                     end)
+            end)
       end)
     end
 end
@@ -155,6 +192,46 @@ function selectmeal_widget(self,vars)
     end
 end
 
+function canonicalize(t)
+  for i=1,4 do
+    if t[i][1]>t[i][2] then
+      t[i][1]=0
+      t[i][2]=0
+    elseif t[i][1]==0 then
+      t[i][2]=0
+    end
+  end
+  -- bubble sort
+--  sqlerror="bubble "
+  for i=4,2,-1 do
+    for j=1,i-1 do
+--      sqlerror=sqlerror..tostring(t[j][1]).."_"..tostring(t[j+1][1]).." "
+      if (t[j+1][1]>0 and t[j][1]>t[j+1][1]) or (t[j][1]==0 and t[j+1][1]>0) then
+--        sqlerror=sqlerror..tostring(t[j][1])..">"..tostring(t[j+1][1]).." "
+        local x=t[j][1]
+        t[j][1]=t[j+1][1]
+        t[j+1][1]=x
+        x=t[j][2]
+        t[j][2]=t[j+1][2]
+        t[j+1][2]=x
+      end
+    end
+  end
+  for i=1,3 do
+    if t[i][2]>=t[i+1][1] and t[i+1][1]>0 then
+      t[i][2]=t[i+1][1]-1
+    end
+  end
+--  sqlerror=sqlerror..table_print(t)
+end
+
+app:get("seatpage", "/seatpage", function(self)
+  local vars= getvars(ngx.var.remote_addr)
+  vars.seat= tonumber(self.params.start)
+  setvars(ngx.var.remote_addr, vars)
+  return self:html(selectseat_widget(self,vars))
+end)
+
 app:get("login", "/login", function(self)
   local vars= getvars(ngx.var.remote_addr)
   vars.name= self.params.name or vars.name
@@ -162,6 +239,7 @@ app:get("login", "/login", function(self)
     vars.range[i][1]= tonumber(self.params["from"..tostring(i)])
     vars.range[i][2]= tonumber(self.params["to"..tostring(i)])
   end
+  canonicalize(vars.range)
   setvars(ngx.var.remote_addr, vars)
   return self:html(selectseat_widget(self,vars))
 end)
@@ -177,7 +255,7 @@ app:get("order", "/order", function(self)
   local vars= getvars(ngx.var.remote_addr)
   local meal= self.params.meal
   return self:html(function()
-  	h2("Meal "..tonumber(meal))--.." for "..tonumber(vars.seat).." by "..vars.name)
+  	h2("Meal "..essen[tonumber(meal)].." for "..tonumber(vars.seat).." by "..vars.name.." at "..preis[tonumber(meal)].."E")
   	text(table_print(vars))
   end)
 end)
