@@ -312,15 +312,41 @@ app:get("pay", "/pay", function(self)
   end)
 end)
 
-app:get("confirm", "/confirm", function(self)
+function kitchen_display(self)
+  local orders= read_orders()
+  local now= os.time()
+  self.title="Bestellungen"
   return self:html(function()
-  	h1("TBD")
+	if sqlerror then text(sqlerror) end
+        element("table", {width="100%"}, function()
+ 	  for i=1,#orders do
+              tr(function() 
+                      td(format_number(now-orders[i].age))
+                      td({align="center",bgcolor="yellow"},orders[i].name)
+                      td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
+                      td({align="center",bgcolor="green"},function()
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Ok")
+                      end)
+                 end)
+          end
+         end)
+  	self.res:add_header("refresh","5")
   end)
+end
+
+app:get("confirm", "/confirm", function(self)
+  local rowid = tonumber(self.params.rowid)
+  local conn= env:connect("/var/local/meals/meals.db")
+  local now= os.time()
+  local query="update orders set ready="..tostring(now).." where rowid="..tostring(rowid)
+  local res,err= conn:execute(query)
+  if not res then sqlerror=err end
+  conn:close()
+  return kitchen_display(self)
 end)
 
 function read_orders()
    local restable={}
---   local row={}
    local conn= env:connect("/var/local/meals/meals.db")
    local query="select rowid,age,name,meal from orders where ready is null order by age"
    local res,err= conn:execute(query)
@@ -345,26 +371,6 @@ function format_number(x)
   return string.format("%d:%02d:%02d", hours, min, x)
 end
 
-app:get("kitchen", "/kitchen", function(self)
-  local orders= read_orders()
-  local now= os.time()
-  self.title="Bestellungen"
-  return self:html(function()
-	if sqlerror then text(sqlerror) end
-        element("table", {width="100%"}, function()
- 	  for i=1,#orders do
-              tr(function() 
-                      td(format_number(now-orders[i].age))
-                      td({align="center",bgcolor="yellow"},orders[i].name)
-                      td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
-                      td({align="center",bgcolor="green"},function()
-                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Ok")
-                      end)
-                 end)
-          end
-         end)
-  	self.res:add_header("refresh","5")
-  end)
-end)
+app:get("kitchen", "/kitchen", kitchen_display)
 
 return app
