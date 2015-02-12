@@ -342,8 +342,9 @@ end
 app:get("kitchen", "/kitchen", function(self)
   local orders= read_orders()
   local now= os.time()
+  self.title="Bestellungen"
   return self:html(function()
-  	h2("Bestellungen")
+	if sqlerror then text(sqlerror) end
         element("table", {width="100%"}, function()
  	  for i=1,#orders do
               tr(function() 
@@ -354,6 +355,7 @@ app:get("kitchen", "/kitchen", function(self)
                  end)
           end
          end)
+  	self.res:add_header("refresh","5")
   end)
 end)
 
