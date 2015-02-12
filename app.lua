@@ -312,11 +312,17 @@ app:get("pay", "/pay", function(self)
   end)
 end)
 
+app:get("confirm", "/confirm", function(self)
+  return self:html(function()
+  	h1("TBD")
+  end)
+end)
+
 function read_orders()
    local restable={}
 --   local row={}
    local conn= env:connect("/var/local/meals/meals.db")
-   local query="select age,name,meal from orders where ready is null order by age"
+   local query="select rowid,age,name,meal from orders where ready is null order by age"
    local res,err= conn:execute(query)
    if not res then sqlerror=err 
    else
@@ -351,7 +357,9 @@ app:get("kitchen", "/kitchen", function(self)
                       td(format_number(now-orders[i].age))
                       td({align="center",bgcolor="yellow"},orders[i].name)
                       td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
-                      td({align="center",bgcolor="green"},"Ok")
+                      td({align="center",bgcolor="green"},function()
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Ok")
+                      end)
                  end)
           end
          end)
