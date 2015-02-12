@@ -7,12 +7,34 @@ local env = database.sqlite3()
 local sqlerror
 
 --users={}
-essen={"Bier", "alkfrei", "Frikadelle", 
-	"Salzstangen", "KartSalat", "Sekt",
-	"Wurst", "Wasser", "Sonstwas" }
-preis={1.00, 1.00, 2.00,
-	0.5, 3.00, 4.00,
-	1.5, 1.5, 0.00 }
+essen={"Fl. Rotwein", "Fl. Weißwein", "Glas Rotwein", 
+	"Glas Weißwein", "Fl. Sekt", "Glas Sekt",
+	"Pils", "Kölsch", "Alt",
+	"alkfrei", "Korn", "Weinbrand",
+	"Tequila", "Klopfer", "Shot",
+	"Fl. Wasser", "Glas Wasser", "Cola",
+	"Fanta", "Sprite", "O-Saft",
+	"A-Saft", "Tee", "Kaffee",
+	
+	"Wurst+Brot", "Wurst+Kart.","Schnitzel+Brot",
+	"Schnitzel+Kart.","Frikad.+Brot","Frikad.+Kart.",
+	"Gulaschsuppe", "Rote Grütze", "Chips",
+	"Salzstangen", "Brezel"
+	 }
+preis={8, 8, 2,
+	2,7,2.5,
+	2.5,2.5,2.5,
+	2.5,1,1,
+	1,1,1,
+	0.5,2.5,1,
+	1,1,1,
+	1,1,1,
+	
+	3,4.5,4,
+	5.5,3.5,5,
+	3,2.5,1,
+	1,1
+ }
 
 function getvars(ip)
    local conn= env:connect("/var/local/meals/meals.db")
@@ -56,7 +78,6 @@ end
 app:get("/", function(self)
   return self:html(function()
     local vars= getvars(ngx.var.remote_addr)
---    h2(text("Welcome "..ngx.var.remote_addr))
     form({action=self:url_for("login")}, function()
         text("Name")
     	input{type="text", name="name", value=vars.name}
@@ -70,28 +91,6 @@ app:get("/", function(self)
     	input{type="submit", value="Start"}
       end)
   end)
-end)
-
-app:get("/y", function(self)
-  return self:html(function()
-    a{href="test/2", "test"}
-  end)
-end)
-
-app:get("/x", function(self)
-  return self:html(function()
-    text(table_print(_G,3))
-    p()
-    text(table_print(self,3))
-  end)
-end)
-
-
-app:get("/button", function(self)
-  return self:html(function()
-    a{href="test/2", "test"}
-  end)
---  return "Welcome to Lapis " .. require("lapis.version")
 end)
 
 function table_print (tt,depth)
@@ -325,7 +324,7 @@ function kitchen_display(self)
                       td({align="center",bgcolor="yellow"},orders[i].name)
                       td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
                       td({align="center",bgcolor="green"},function()
-                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Ok")
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Fertig")
                       end)
                  end)
           end
