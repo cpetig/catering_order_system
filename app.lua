@@ -396,16 +396,84 @@ end
 
 app:get("deliver", "/deliver", deliver_display)
 
-app:get("pay", "/pay", function(self)
+function read_payments(vars)
+   local seats = "seat between "..tostring(vars.range[1][1]).." and "..tostring(vars.range[1][2])
+   for i=2,rangesize do
+     if vars.range[i][1]>0 then
+       seats= seats.." or seat between "..tostring(vars.range[i][1]).." and "..tostring(vars.range[i][2])
+     end
+   end
+   local restable={}
+   local conn= env:connect(database)
+   local query="select seat,meal from orders where delivered is not null and paid is null and ("..seats
+   	..") order by seat"
+   local res,err= conn:execute(query)
+   if not res then sqlerror=err 
+   else
+     local res2=res:fetch({},"a")
+     while res2 do
+       restable[res2.seat]= (restable[res2.seat] or 0.0)+ preis[res2.meal]
+       res2=res:fetch({},"a")
+     end
+     res:close()
+   end
+   conn:close()
+   local restable2={}
+   for i,v in pairs(restable) do
+     restable2[#restable2+1] = { seat=i, sum=v }
+   end
+   return restable2
+end
+
+function pay_display(self)
+  local vars= getvars(ngx.var.remote_addr)
+  local topay= read_payments(vars)
+  self.title="Bezahlen"
+  return self:html(function()
+	if sqlerror then text(sqlerror) end
+        element("table", {width="100%"}, function()
+          td({align="center",bgcolor="yellow"},function()
+                a({href=self:url_for("seatpage")},"Bestellen")
+            end)
+          td({align="center"},function()
+                a({href=self:url_for("deliver")},"Liefern")
+            end)
+          td({align="center",bgcolor="red"},function()
+                a({href=self:url_for("paid")},"0€ erhalten")
+            end)
+ 	  for i=1,#topay,3 do
+             tr(function() 
+	 	for j=i,i+2 do
+	 	   if j<=#topay then
+                      td({align="center",bgcolor="red"},function()
+                      	a({href=self:url_for("paid").."?seat="..tostring(topay[j].seat)},string.format("%d = %.2f€", topay[j].seat, topay[j].sum))
+                      end)
+                   end
+                end
+             end)
+          end
+         end)
+  	self.options.content_type="text/html; charset=utf-8"
+  end)
+end
+
+app:get("pay", "/pay", pay_display)
+
+app:get("paid", "/paid", function(self)
   return self:html(function()
   	h1("TBD")
   end)
 end)
 
 app:get("delivered", "/delivered", function(self)
-  return self:html(function()
-  	h1("TBD")
-  end)
+  local rowid = tonumber(self.params.rowid)
+  local conn= env:connect(database)
+  local now= os.time()
+  local query="update orders set delivered="..tostring(now).." where rowid="..tostring(rowid)
+  local res,err= conn:execute(query)
+  if not res then sqlerror=err end
+  conn:close()
+  return deliver_display(self)
 end)
 
 function kitchen_display(self)
