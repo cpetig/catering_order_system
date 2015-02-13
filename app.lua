@@ -541,7 +541,7 @@ app:get("delivered", "/delivered", function(self)
 end)
 
 function kitchen_display(self)
-  local orders= read_orders()
+  local orders,amount= read_orders()
   local now= os.time()
   self.title="Bestellungen"
   return self:html(function()
@@ -551,7 +551,7 @@ function kitchen_display(self)
               tr(function() 
                       td(format_number(now-orders[i].age))
                       td({align="center",bgcolor="yellow"},orders[i].name)
-                      td({align="center",bgcolor="lightgreen"},essen[orders[i].meal])
+                      td({align="center",bgcolor="lightgreen"},essen[orders[i].meal].." (von insges. "..tostring(amount[orders[i].meal])..")")
                       td({align="center",bgcolor="green"},function()
                       	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Fertig")
                       end)
@@ -576,6 +576,7 @@ end)
 
 function read_orders()
    local restable={}
+   local amount={}
    local conn= env:connect(database)
    local query="select rowid,age,name,meal from orders where ready is null order by age"
    local res,err= conn:execute(query)
@@ -584,12 +585,13 @@ function read_orders()
      local res2=res:fetch({},"a")
      while res2 do
        restable[#restable+1]=res2
+       amount[res2.meal] = (amount[res2.meal] or 0)+1
        res2=res:fetch({},"a")
      end
      res:close()
    end
    conn:close()
-   return restable
+   return restable,amount
 end
 
 function format_number(x)
