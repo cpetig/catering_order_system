@@ -190,16 +190,21 @@ function order_statistics(seat)
    local conn= env:connect(database)
    local res= os.time()
    local open=0
-   local query="select count(age) from orders where delivered is null and seat="..tostring(seat)
+   local query="select meal,rowid,ready from orders where delivered is null and seat="..tostring(seat).." order by age"
    local res,err= conn:execute(query)
+   local restable={}
    if not res then sqlerror=err 
    else
-     local res2=res:fetch()
-     open=res2 or 0
+     local res2=res:fetch({},"a")
+     while res2 do
+       restable[#restable+1]={ meal=res2.meal, rowid=res2.rowid, ready=res2.ready }
+       res2=res:fetch({},"a")
+     end
      res:close()
    end
    conn:close()
-   return string.format("%d offene Bestellungen", open)
+   return restable
+   --string.format("%d offene Bestellungen", open)
 end
 
 function selectmeal_widget(self,vars)
@@ -246,9 +251,23 @@ function selectmeal_widget(self,vars)
                       a({href=self:url_for("mealpage").."?start="..tostring(newstart)},">>")
                    end)
           end)
+          local stats= order_statistics(vars.seat)
+          for i=1,#stats do
+            tr(function()
+              td(essen[stats[i].meal])
+              td(string.format("%.2f€", preis[stats[i].meal]))
+              if stats[i].ready then td("wartet")
+              else
+              	td(function()
+              	   a({href=self:url_for("cancel").."?rowid="..tostring(stats[i].rowid)}, "Storno")
+              	end)
+              end
+            end) 
+          end
+--          text(table_print(stats))
       end)
-      br()
-      text(order_statistics(vars.seat))
+      --br()
+      --text(order_statistics(vars.seat))
 --      end)
       self.options.content_type="text/html; charset=utf-8"
     end
@@ -572,6 +591,18 @@ app:get("confirm", "/confirm", function(self)
   if not res then sqlerror=err end
   conn:close()
   return kitchen_display(self)
+end)
+
+app:get("cancel", "/cancel", function(self)
+  local rowid = tonumber(self.params.rowid)
+  local conn= env:connect(database)
+  local now= os.time()
+  local query="delete from orders where rowid="..tostring(rowid)
+  local res,err= conn:execute(query)
+  if not res then sqlerror=err end
+  conn:close()
+  local vars= getvars(ngx.var.remote_addr)
+  return self:html(selectmeal_widget(self,vars))
 end)
 
 function read_orders()
