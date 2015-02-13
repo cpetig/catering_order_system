@@ -143,7 +143,7 @@ end
 function selectseat_widget(self,vars)
     local list= create_seatlist(vars)
     local seatcols= 2*columns
-    local elems_page= seatcols*vars.rows
+    local elems_page= seatcols*vars.rows-1
     -- complete to 9 elements
     local missing= seatcols*vars.rows-#list
     for i=1,missing do 
@@ -197,6 +197,7 @@ function selectseat_widget(self,vars)
        			if newstart>#list then newstart=1
        			elseif newstart+elems_page>#list then newstart=#list-(elems_page)+1
        			end
+--text("NS "..newstart.." "..elems_page.." "..#list)
                   	a({href=self:url_for("seatpage").."?start="..tostring(list[newstart])},">>")
                      end)
             end)
