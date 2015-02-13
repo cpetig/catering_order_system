@@ -8,10 +8,10 @@ local env = database.sqlite3()
 local sqlerror
 
 local columns=3
-local rows=3
+--local rows=3
 local database="/var/local/meals/meals.db"
 local rangesize=4
-local elems_page = columns*rows-1
+--local elems_page = columns*rows-1
 local fontsize=8
 local fontsize_meals=fontsize-1
 local fontsize_seats=fontsize+1
@@ -49,21 +49,21 @@ preis={8, 8, 2,
 
 function getvars(ip)
    local conn= env:connect(database)
-   local curs,err=conn:execute("select name,from1,to1,from2,to2,from3,to3,from4,to4,seat,mealpage "
+   local curs,err=conn:execute("select name,from1,to1,from2,to2,from3,to3,from4,to4,seat,mealpage,rows "
    	.."from users where ip='"..ip.."'")
    if not curs then sqlerror=err end
    local res=curs and curs:fetch({},"a")
    local x={}
    if not res then
-     x= {name=ip, range={{0,0},{0,0},{0,0},{0,0}}, seat=1, mealpage=1 }
-     local query="insert into users (name,from1,to1,from2,to2,from3,to3,from4,to4,seat,ip,mealpage) "
-     	.."values ('"..ip.."',0,0,0,0,0,0,0,0,1,'"..ip.."',1)"
+     x= {name=ip, range={{0,0},{0,0},{0,0},{0,0}}, seat=1, mealpage=1, rows=3 }
+     local query="insert into users (name,from1,to1,from2,to2,from3,to3,from4,to4,seat,ip,mealpage,rows) "
+     	.."values ('"..ip.."',0,0,0,0,0,0,0,0,1,'"..ip.."',1,3)"
 --     print(query)
      local res,err= conn:execute(query)
      if not res then sqlerror=err end
    else
      x= {name=res.name, range={{res.from1,res.to1},{res.from2,res.to2},{res.from3,res.to3},{res.from4,res.to4}}, 
-     	seat=res.seat, mealpage=res.mealpage}
+     	seat=res.seat, mealpage=res.mealpage, rows=res.rows}
    end
    if curs then curs:close() end
    conn:close()
@@ -81,6 +81,7 @@ function setvars(ip,vars)
    	..",from4="..tostring(vars.range[4][1])
    	..",to4="..tostring(vars.range[4][2])
    	..",seat="..tostring(vars.seat) 
+   	..",rows="..tostring(vars.rows)
    	..",mealpage="..tostring(vars.mealpage) 
    	.." where ip='"..ip.."'"
    local res,err= conn:execute(query)
@@ -103,6 +104,9 @@ app:get("/", function(self)
           input{type="number", size="3", maxlength="3", name="to"..tostring(i), value=tostring(vars.range[i][2]), min=0, max=120}
           br()
     	end
+    	text("Zeilen ")
+    	input{type="number", name="rows", value=vars.rows, min=3, max=10 }
+    	br()
     	input{type="submit", value="Start"}
       end)
     end)
@@ -139,9 +143,9 @@ end
 function selectseat_widget(self,vars)
     local list= create_seatlist(vars)
     local seatcols= 2*columns
-    local elems_page= seatcols*rows
+    local elems_page= seatcols*vars.rows
     -- complete to 9 elements
-    local missing= seatcols*rows-#list
+    local missing= seatcols*vars.rows-#list
     for i=1,missing do 
       list[#list+1]=list[i]
     end
@@ -172,7 +176,7 @@ function selectseat_widget(self,vars)
                   	a({href=self:url_for("pay")},"Zahlen") 
                     end)
           end)
-          for i=1,rows-1 do
+          for i=1,vars.rows-1 do
             tr(function()
             	for j=1,seatcols do
                   td({align="center",bgcolor="yellow"},function() 
@@ -184,11 +188,11 @@ function selectseat_widget(self,vars)
           tr(function()
             	for j=1,seatcols-1 do
                   td({align="center",bgcolor="yellow"},function() 
-                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+rows*seatcols-seatcols+j])},tostring(list[pagestart+rows*seatcols-seatcols+j]))
+                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+vars.rows*seatcols-seatcols+j])},tostring(list[pagestart+vars.rows*seatcols-seatcols+j]))
                      end)
                 end
                 td({align="center"},function()
-       			local newstart=pagestart+seatcols*rows
+       			local newstart=pagestart+seatcols*vars.rows
        			--newstart starts at 1
        			if newstart>#list then newstart=1
        			elseif newstart+elems_page>#list then newstart=#list-(elems_page)+1
@@ -224,6 +228,7 @@ function order_statistics(seat)
 end
 
 function selectmeal_widget(self,vars)
+    local elems_page = columns*vars.rows-1
     local pagestart=math.ceil((vars.mealpage-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
     if pagestart+elems_page>#essen then pagestart=#essen-(elems_page) end
@@ -244,7 +249,7 @@ function selectmeal_widget(self,vars)
                   	a({href=self:url_for("pay")},"Zahlen") 
                     end)
           end)
-          for i=1,rows-1 do
+          for i=1,vars.rows-1 do
             tr(function() 
             	for j=1,columns do
                   td({align="center",bgcolor="lightgreen"},function()
@@ -256,11 +261,11 @@ function selectmeal_widget(self,vars)
           tr(function() 
               for j=1,columns-1 do
                 td({align="center",bgcolor="lightgreen"},function()
-                      a({href=self:url_for("order").."?meal="..tostring(pagestart+rows*columns-columns+j)},essen[pagestart+rows*columns-columns+j])
+                      a({href=self:url_for("order").."?meal="..tostring(pagestart+vars.rows*columns-columns+j)},essen[pagestart+vars.rows*columns-columns+j])
                 end)
               end
               td({align="center"},function()
-                      local newstart=pagestart+columns*rows
+                      local newstart=pagestart+columns*vars.rows
                       --newstart starts at 1
                       if newstart>#essen then newstart=1
                       elseif newstart+elems_page>#essen then newstart=#essen-(elems_page)+1
@@ -349,6 +354,7 @@ app:get("login", "/login", function(self)
     vars.range[i][1]= tonumber(self.params["from"..tostring(i)])
     vars.range[i][2]= tonumber(self.params["to"..tostring(i)])
   end
+  vars.rows= self.params.rows or vars.rows
   canonicalize(vars.range)
   setvars(ngx.var.remote_addr, vars)
   return self:html(selectseat_widget(self,vars))
