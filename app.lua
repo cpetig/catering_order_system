@@ -12,6 +12,10 @@ local rows=3
 local database="/var/local/meals/meals.db"
 local rangesize=4
 local elems_page = columns*rows-1
+local fontsize=8
+local fontsize_meals=fontsize-1
+local fontsize_seats=fontsize+1
+local fontsize_pay=fontsize+1
 
 --users={}
 essen={"Fl. Rotwein", "Fl. Weißwein", "Glas Rotwein", 
@@ -88,6 +92,7 @@ app:get("/", function(self)
   self.title="Login"
   return self:html(function()
     local vars= getvars(ngx.var.remote_addr)
+   element("font", {size=fontsize}, function()
     form({action=self:url_for("login")}, function()
         text("Name")
     	input{type="text", name="name", value=vars.name}
@@ -100,6 +105,8 @@ app:get("/", function(self)
     	end
     	input{type="submit", value="Start"}
       end)
+    end)
+--      self.res:add_header("HandheldFriendly", "true")
   end)
 end)
 
@@ -131,8 +138,10 @@ end
 
 function selectseat_widget(self,vars)
     local list= create_seatlist(vars)
+    local seatcols= 2*columns
+    local elems_page= seatcols*rows
     -- complete to 9 elements
-    local missing= columns*rows-#list
+    local missing= seatcols*rows-#list
     for i=1,missing do 
       list[#list+1]=list[i]
     end
@@ -145,37 +154,41 @@ function selectseat_widget(self,vars)
     local pagestart=math.ceil((posinlist-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
     if pagestart+elems_page>#list then pagestart=#list-(elems_page) end
+    self.title="Platzwahl"
+--    self.res:add_header("HandheldFriendly", "true")
+--    self.res:add_header("viewport", "width=device-width, maximum-scale=1.0, user-scalable=yes")
     return function()
       --text(pagestart)text(posinlist)text(table_print(list))
       if sqlerror then text(sqlerror) end
+     element("font", {size=fontsize_seats}, function()
       element("table", {width="100%"}, function()
       --'<table width="100%">'
           tr(function() 
-                  td({align="center"},"Platz")
-                  td({align="center"},function()
+                  td({align="center",colspan="2"},"Platz")
+                  td({align="center",colspan="2"},function()
                   	a({href=self:url_for("deliver")},"Liefern")
                     end)
-                  td({align="center",bgcolor="red"},function()
+                  td({align="center",colspan="2",bgcolor="red"},function()
                   	a({href=self:url_for("pay")},"Zahlen") 
                     end)
           end)
           for i=1,rows-1 do
             tr(function()
-            	for j=1,columns do
+            	for j=1,seatcols do
                   td({align="center",bgcolor="yellow"},function() 
-                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+i*columns-columns+j])},tostring(list[pagestart+i*columns-columns+j]))
+                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+i*seatcols-seatcols+j])},tostring(list[pagestart+i*seatcols-seatcols+j]))
                      end)
                 end
             end)
           end
           tr(function()
-            	for j=1,columns-1 do
+            	for j=1,seatcols-1 do
                   td({align="center",bgcolor="yellow"},function() 
-                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+rows*columns-columns+j])},tostring(list[pagestart+rows*columns-columns+j]))
+                  	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+rows*seatcols-seatcols+j])},tostring(list[pagestart+rows*seatcols-seatcols+j]))
                      end)
                 end
                 td({align="center"},function()
-       			local newstart=pagestart+columns*rows
+       			local newstart=pagestart+seatcols*rows
        			--newstart starts at 1
        			if newstart>#list then newstart=1
        			elseif newstart+elems_page>#list then newstart=#list-(elems_page)+1
@@ -184,6 +197,8 @@ function selectseat_widget(self,vars)
                      end)
             end)
       end)
+     end)
+--      self.res:add_header("HandheldFriendly", "true")
     end
 end
 
@@ -215,6 +230,7 @@ function selectmeal_widget(self,vars)
     return function()
       if sqlerror then text(sqlerror) end
 --      p({style="font-size: x-large;"},function()
+     element("font", {size=fontsize_meals}, function()
       element("table", {width="100%"}, function()
       --'<table width="100%">'
           tr(function() 
@@ -267,6 +283,7 @@ function selectmeal_widget(self,vars)
           end
 --          text(table_print(stats))
       end)
+     end)
       --br()
       --text(order_statistics(vars.seat))
 --      end)
@@ -403,6 +420,7 @@ function deliver_display(self,lastid)
   self.title="Lieferungen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
+       element("font", {size=fontsize}, function()
         element("table", {width="100%"}, function()
           td({align="center",bgcolor="yellow"},function()
                 a({href=self:url_for("seatpage")},"Bestellen")
@@ -429,6 +447,7 @@ function deliver_display(self,lastid)
                  end)
           end
          end)
+        end)
   	self.options.content_type="text/html; charset=utf-8"
   end)
 end
@@ -486,6 +505,7 @@ function pay_display(self)
   self.title="Bezahlen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
+       element("font", {size=fontsize_pay}, function()
         element("table", {width="100%"}, function()
           td({align="center",bgcolor="yellow"},function()
                 a({href=self:url_for("seatpage")},"Bestellen")
@@ -514,6 +534,7 @@ function pay_display(self)
              end)
           end
          end)
+        end)
   	self.options.content_type="text/html; charset=utf-8"
   end)
 end
@@ -583,6 +604,7 @@ function kitchen_display(self,lastname,lastmeal)
   self.title="Bestellungen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
+--       element("font", {size=fontsize}, function()
         element("table", {width="100%"}, function()
           if lastname then
             tr(function()
@@ -602,12 +624,14 @@ function kitchen_display(self,lastname,lastmeal)
                  end)
           end
          end)
+--        end)
         local param=""
         if lastname then
           param= "?lastmeal="..lastmeal.."&lastname="..encoding.encode_base64(lastname)
         end
   	self.res:add_header("refresh","5; URL="..self:url_for("kitchen")..param)
   	self.options.content_type="text/html; charset=utf-8"
+--        self.res:add_header("viewport", "width=device-width, maximum-scale=1.0, user-scalable=yes")
   end)
 end
 
