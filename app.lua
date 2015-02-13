@@ -1,5 +1,6 @@
 local lapis = require("lapis")
 local app = lapis.Application()
+local encoding = require("lapis.util.encoding")
 
 local database = require("luasql.sqlite3")
 local env = database.sqlite3()
@@ -576,13 +577,20 @@ app:get("delivered", "/delivered", function(self)
   return deliver_display(self,rowid)
 end)
 
-function kitchen_display(self)
+function kitchen_display(self,lastname,lastmeal)
   local orders,amount= read_orders()
   local now= os.time()
   self.title="Bestellungen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
         element("table", {width="100%"}, function()
+          if lastname then
+            tr(function()
+            	td("Fertig")
+            	td({align="center"},lastname)
+                td({align="center"},essen[lastmeal])
+            end)
+          end
  	  for i=1,#orders do
               tr(function() 
                       td(format_number(now-orders[i].age))
@@ -594,7 +602,11 @@ function kitchen_display(self)
                  end)
           end
          end)
-  	self.res:add_header("refresh","5; URL="..self:url_for("kitchen"))
+        local param=""
+        if lastname then
+          param= "?lastmeal="..lastmeal.."&lastname="..encoding.encode_base64(lastname)
+        end
+  	self.res:add_header("refresh","5; URL="..self:url_for("kitchen")..param)
   	self.options.content_type="text/html; charset=utf-8"
   end)
 end
@@ -606,8 +618,16 @@ app:get("confirm", "/confirm", function(self)
   local query="update orders set ready="..tostring(now).." where rowid="..tostring(rowid)
   local res,err= conn:execute(query)
   if not res then sqlerror=err end
+  local query="select name,meal from orders where rowid="..tostring(rowid)
+  local res,err= conn:execute(query)
+  local name,meal
+  if not res then sqlerror=err
+  else
+    name,meal = res:fetch()
+    res:close()
+  end
   conn:close()
-  return kitchen_display(self)
+  return kitchen_display(self,name,meal)
 end)
 
 app:get("cancel", "/cancel", function(self)
@@ -650,6 +670,12 @@ function format_number(x)
   return string.format("%d:%02d:%02d", hours, min, x)
 end
 
-app:get("kitchen", "/kitchen", kitchen_display)
+app:get("kitchen", "/kitchen", function(self)
+  local name
+  if self.params.lastname then
+    name= encoding.decode_base64(self.params.lastname)
+  end
+  return kitchen_display(self, name, tonumber(self.params.lastmeal))
+end)
 
 return app
