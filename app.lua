@@ -385,9 +385,20 @@ function read_deliveries(vars)
    return restable
 end
 
-function deliver_display(self)
+function deliver_display(self,lastid)
   local vars= getvars(ngx.var.remote_addr)
   local open= read_deliveries(vars)
+  local lastinfo={}
+  if lastid then
+   local conn= env:connect(database)
+   local curs,err=conn:execute("select seat,meal from orders where rowid="..tostring(lastid))
+   if not curs then sqlerror=err
+   else
+     lastinfo=curs:fetch({},"a")
+     curs:close()
+   end
+   conn:close()
+  end
   self.title="Lieferungen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
@@ -401,6 +412,12 @@ function deliver_display(self)
           td({align="center",bgcolor="red"},function()
                 a({href=self:url_for("pay")},"Zahlen") 
             end)
+          if lastid then
+              tr(function() 
+                      td({align="center"},lastinfo.seat)
+                      td({align="center"},essen[lastinfo.meal])
+                 end)
+          end
  	  for i=1,#open do
               tr(function() 
                       td({align="center",bgcolor="yellow"},open[i].seat)
@@ -556,7 +573,7 @@ app:get("delivered", "/delivered", function(self)
   local res,err= conn:execute(query)
   if not res then sqlerror=err end
   conn:close()
-  return deliver_display(self)
+  return deliver_display(self,rowid)
 end)
 
 function kitchen_display(self)
