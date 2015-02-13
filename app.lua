@@ -376,7 +376,9 @@ function deliver_display(self)
           td({align="center",bgcolor="yellow"},function()
                 a({href=self:url_for("seatpage")},"Bestellen")
             end)
-          td({align="center"},tostring(#open).." Lieferungen")
+          td({align="center"},function()
+          	a({href=self:url_for("deliver")}, tostring(#open).." Lieferungen")
+            end)
           td({align="center",bgcolor="red"},function()
                 a({href=self:url_for("pay")},"Zahlen") 
             end)
@@ -404,6 +406,7 @@ function read_payments(vars)
      end
    end
    local restable={}
+   local selected={}
    local conn= env:connect(database)
    local query="select seat,meal from orders where delivered is not null and paid is null and ("..seats
    	..") order by seat"
@@ -417,17 +420,32 @@ function read_payments(vars)
      end
      res:close()
    end
+   local selsum=0
+   query="select distinct seat from payselection join orders on payselection.row=orders.rowid where ip='"..ngx.var.remote_addr.."'"
+   res,err= conn:execute(query)
+   if not res then sqlerror=err
+   else
+     local res2=res:fetch({},"n")
+     while res2 do
+       if restable[res2[1]] then
+         selected[res2[1]]= true
+         selsum= selsum+restable[res2[1]]
+       end
+       res2=res:fetch({},"n")
+     end
+     res:close()
+   end      
    conn:close()
    local restable2={}
    for i,v in pairs(restable) do
-     restable2[#restable2+1] = { seat=i, sum=v }
+     restable2[#restable2+1] = { seat=i, sum=v, selected=selected[i] }
    end
-   return restable2
+   return restable2,selsum
 end
 
 function pay_display(self)
   local vars= getvars(ngx.var.remote_addr)
-  local topay= read_payments(vars)
+  local topay,selsum= read_payments(vars)
   self.title="Bezahlen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
@@ -439,14 +457,20 @@ function pay_display(self)
                 a({href=self:url_for("deliver")},"Liefern")
             end)
           td({align="center",bgcolor="red"},function()
-                a({href=self:url_for("paid")},"0€ erhalten")
+                a({href=self:url_for("paidconfirm")},string.format("%.2f€ erhalten",selsum))
             end)
  	  for i=1,#topay,3 do
              tr(function() 
 	 	for j=i,i+2 do
 	 	   if j<=#topay then
-                      td({align="center",bgcolor="red"},function()
-                      	a({href=self:url_for("paid").."?seat="..tostring(topay[j].seat)},string.format("%d = %.2f€", topay[j].seat, topay[j].sum))
+	 	      local color= "orange"
+	 	      if topay[j].selected then color="lightgrey" end
+                      td({align="center",bgcolor=color},function()
+                        local content=""
+                        if topay[j].selected then content=string.format("%d raus (-%.2f€)", topay[j].seat, topay[j].sum)
+                        else content= string.format("%d dazu (+%.2f€)", topay[j].seat, topay[j].sum)
+                        end
+                      	a({href=self:url_for("paid").."?seat="..tostring(topay[j].seat)},content)
                       end)
                    end
                 end
@@ -460,9 +484,49 @@ end
 app:get("pay", "/pay", pay_display)
 
 app:get("paid", "/paid", function(self)
-  return self:html(function()
-  	h1("TBD")
-  end)
+  local seat = tonumber(self.params.seat)
+  local conn= env:connect(database)
+  local query="select count(row) from payselection join orders on payselection.row=orders.rowid where ip='"..ngx.var.remote_addr.."' and seat="..tostring(seat)
+  local res,err= conn:execute(query)
+  if not res then sqlerror=err
+  else
+    local res2=res:fetch({},"n")
+    res:close()
+--sqlerror="Paid res "..res2[1]
+    if res2[1]>0 then
+      query= "delete from payselection where ip='"..ngx.var.remote_addr.."' and exists(select 1 from orders where seat="..tostring(seat).." and orders.rowid=payselection.row)"
+      local res,err= conn:execute(query)
+--sqlerror=sqlerror.." "..query
+      if not res then sqlerror=err end
+    else
+      query= "insert into payselection select '"..ngx.var.remote_addr.."',rowid from orders where seat="..tostring(seat).." and paid is null and delivered is not null"
+      local res,err= conn:execute(query)
+--sqlerror=sqlerror.." "..query
+      if not res then sqlerror=err end
+    end
+    res:close()
+  end      
+  conn:close()
+  return pay_display(self)
+end)
+
+app:get("paidconfirm", "/paidconfirm", function(self)
+  local conn= env:connect(database)
+  local now= os.time()
+  local query="update orders set paid="..tostring(now).." where exists (select 1 from payselection where ip='"..ngx.var.remote_addr.."' and payselection.row=orders.rowid)"
+  local res,err= conn:execute(query)
+  if not res then sqlerror=query..": "..err end
+  query="delete from payselection where ip='"..ngx.var.remote_addr.."'"
+  res,err= conn:execute(query)
+  if not res then sqlerror=query..": "..err end
+  query="insert into completed select * from orders where paid is not null"
+  res,err= conn:execute(query)
+  if not res then sqlerror=query..": "..err end
+  query="delete from orders where paid is not null"
+  res,err= conn:execute(query)
+  if not res then sqlerror=query..": "..err end
+  conn:close()
+  return pay_display(self)
 end)
 
 app:get("delivered", "/delivered", function(self)
