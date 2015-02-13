@@ -84,6 +84,7 @@ function setvars(ip,vars)
 end
 
 app:get("/", function(self)
+  self.title="Login"
   return self:html(function()
     local vars= getvars(ngx.var.remote_addr)
     form({action=self:url_for("login")}, function()
@@ -149,8 +150,8 @@ function selectseat_widget(self,vars)
       element("table", {width="100%"}, function()
       --'<table width="100%">'
           tr(function() 
-                  td("Platz")
-                  td(function()
+                  td({align="center"},"Platz")
+                  td({align="center"},function()
                   	a({href=self:url_for("deliver")},"Liefern")
                     end)
                   td({align="center",bgcolor="red"},function()
@@ -172,7 +173,7 @@ function selectseat_widget(self,vars)
                   	a({href=self:url_for("seat").."?seat="..tostring(list[pagestart+rows*columns-columns+j])},tostring(list[pagestart+rows*columns-columns+j]))
                      end)
                 end
-                td(function()
+                td({align="center"},function()
        			local newstart=pagestart+columns*rows
        			--newstart starts at 1
        			if newstart>#list then newstart=1
@@ -214,7 +215,7 @@ function selectmeal_widget(self,vars)
                   td({align="center",bgcolor="yellow"},function()
                   	a({href=self:url_for("seatpage")},tostring(vars.seat))
                     end)
-                  td(function()
+                  td({align="center"},function()
                   	a({href=self:url_for("deliver")},"Liefern")
                     end)
                   td({align="center",bgcolor="red"},function()
@@ -236,7 +237,7 @@ function selectmeal_widget(self,vars)
                       a({href=self:url_for("order").."?meal="..tostring(pagestart+rows*columns-columns+j)},essen[pagestart+rows*columns-columns+j])
                 end)
               end
-              td(function()
+              td({align="center"},function()
                       local newstart=pagestart+columns*rows
                       --newstart starts at 1
                       if newstart>#essen then newstart=1
@@ -340,13 +341,68 @@ app:get("order", "/order", function(self)
   return self:html(selectmeal_widget(self,vars))  
 end)
 
-app:get("deliver", "/deliver", function(self)
+function read_deliveries(vars)
+   local seats = "seat between "..tostring(vars.range[1][1]).." and "..tostring(vars.range[1][2])
+   for i=2,rangesize do
+     if vars.range[i][1]>0 then
+       seats= seats.." or seat between "..tostring(vars.range[i][1]).." and "..tostring(vars.range[i][2])
+     end
+   end
+   local restable={}
+   local conn= env:connect(database)
+   local query="select rowid,seat,meal from orders where ready is not null and delivered is null and ("..seats
+   	..") order by age"
+   local res,err= conn:execute(query)
+   if not res then sqlerror=err 
+   else
+     local res2=res:fetch({},"a")
+     while res2 do
+       restable[#restable+1]=res2
+       res2=res:fetch({},"a")
+     end
+     res:close()
+   end
+   conn:close()
+   return restable
+end
+
+function deliver_display(self)
+  local vars= getvars(ngx.var.remote_addr)
+  local open= read_deliveries(vars)
+  self.title="Lieferungen"
+  return self:html(function()
+	if sqlerror then text(sqlerror) end
+        element("table", {width="100%"}, function()
+          td({align="center",bgcolor="yellow"},function()
+                a({href=self:url_for("seatpage")},"Bestellen")
+            end)
+          td({align="center"},tostring(#open).." Lieferungen")
+          td({align="center",bgcolor="red"},function()
+                a({href=self:url_for("pay")},"Zahlen") 
+            end)
+ 	  for i=1,#open do
+              tr(function() 
+                      td({align="center",bgcolor="yellow"},open[i].seat)
+                      td({align="center",bgcolor="lightgreen"},essen[open[i].meal])
+                      td({align="center",bgcolor="green"},function()
+                      	a({href=self:url_for("delivered").."?rowid="..tostring(open[i].rowid)},"Erhalten")
+                      end)
+                 end)
+          end
+         end)
+  	self.options.content_type="text/html; charset=utf-8"
+  end)
+end
+
+app:get("deliver", "/deliver", deliver_display)
+
+app:get("pay", "/pay", function(self)
   return self:html(function()
   	h1("TBD")
   end)
 end)
 
-app:get("pay", "/pay", function(self)
+app:get("delivered", "/delivered", function(self)
   return self:html(function()
   	h1("TBD")
   end)
