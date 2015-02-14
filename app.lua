@@ -271,10 +271,15 @@ function selectmeal_widget(self,vars)
                       if newstart>#essen then newstart=1
                       elseif newstart+elems_page>#essen then newstart=#essen-(elems_page)+1
                       end
-                      a({href=self:url_for("mealpage").."?start="..tostring(newstart)},">>")
+                      a({href=self:url_for("mealpage").."?start="..tostring(newstart)}," >> ")
                    end)
           end)
           local stats= order_statistics(vars.seat)
+          if #stats>1 then
+              tr(function()
+                td("Bestellt:")
+              end)
+          end
           for i=1,#stats do
             tr(function()
               td(essen[stats[i].meal])
