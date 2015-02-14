@@ -358,8 +358,8 @@ app:get("login", "/login", function(self)
   local vars= getvars(ngx.var.remote_addr)
   vars.name= self.params.name or vars.name
   for i=1,rangesize do
-    vars.range[i][1]= tonumber(self.params["from"..tostring(i)] or "0")
-    vars.range[i][2]= tonumber(self.params["to"..tostring(i)] or "0")
+    vars.range[i][1]= tonumber(self.params["from"..tostring(i)] or "0") or 0
+    vars.range[i][2]= tonumber(self.params["to"..tostring(i)] or "0") or 0
   end
   vars.rows= self.params.rows or vars.rows
   canonicalize(vars.range)
