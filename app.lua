@@ -636,7 +636,8 @@ function kitchen_display(self,lastname,lastmeal)
                       end)
                  end)
           end
-          if #orders<1 then
+          if #orders<1 and not lastname then
+              -- just to not show an empty page
               text("Keine offenen Bestellungen")
           end
          end)
