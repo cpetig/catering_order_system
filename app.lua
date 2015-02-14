@@ -233,6 +233,7 @@ function selectmeal_widget(self,vars)
     local pagestart=math.ceil((vars.mealpage-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
     if pagestart+elems_page>#essen then pagestart=#essen-(elems_page) end
+    self.title="Bestellen"
     return function()
       if sqlerror then text(sqlerror) end
 --      p({style="font-size: x-large;"},function()
