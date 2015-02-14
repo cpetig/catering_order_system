@@ -630,6 +630,9 @@ function kitchen_display(self,lastname,lastmeal)
                       end)
                  end)
           end
+          if #orders<1 then
+              text("Keine offenen Bestellungen")
+          end
          end)
 --        end)
         local param=""
