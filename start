@@ -1,0 +1,5 @@
+#!/bin/sh
+cd /home/christof/lapistest
+nohup gksudo lapis server production &
+sleep 20
+firefox http://localhost/kitchen
