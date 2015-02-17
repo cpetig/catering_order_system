@@ -2,8 +2,9 @@ local lapis = require("lapis")
 local app = lapis.Application()
 local encoding = require("lapis.util.encoding")
 
-local database = require("luasql.sqlite3")
-local env = database.sqlite3()
+--local database = require("luasql.sqlite3")
+--local env = database.sqlite3()
+local DBI = require('DBI')
 
 local sqlerror
 
@@ -32,14 +33,14 @@ essen={"Fl. Rotwein", "Fl. Weißwein", "Glas Rotwein",
 	"Gulaschsuppe", "Rote Grütze", "Chips",
 	"Salzstangen", "Brezel"
 	 }
-preis={8, 8, 2,
+preis={9.5, 9.5, 2,
 	2,7,2.5,
 	2.5,2.5,2.5,
 	2.5,1,1,
+	1.5,1.5,1.5,
+	2.5,0.75,1,
 	1,1,1,
-	0.5,2.5,1,
-	1,1,1,
-	1,1,1,
+	1,1,1.5,
 	
 	3,4.5,4,
 	5.5,3.5,5,
@@ -48,44 +49,46 @@ preis={8, 8, 2,
  }
 
 function getvars(ip)
-   local conn= env:connect(database)
-   local curs,err=conn:execute("select name,from1,to1,from2,to2,from3,to3,from4,to4,seat,mealpage,rows "
-   	.."from users where ip='"..ip.."'")
-   if not curs then sqlerror=err end
-   local res=curs and curs:fetch({},"a")
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local stmt,err= conn:prepare("select name,from1,to1,from2,to2,from3,to3,from4,to4,seat,mealpage,rows "
+   	.."from users where ip=?")
+   if not stmt then 
+   	sqlerror=err
+   	return 
+   end  
+   stmt:execute(ip)
+   local res= stmt:fetch(true)
    local x={}
    if not res then
      x= {name=ip, range={{0,0},{0,0},{0,0},{0,0}}, seat=1, mealpage=1, rows=3 }
      local query="insert into users (name,from1,to1,from2,to2,from3,to3,from4,to4,seat,ip,mealpage,rows) "
-     	.."values ('"..ip.."',0,0,0,0,0,0,0,0,1,'"..ip.."',1,3)"
---     print(query)
-     local res,err= conn:execute(query)
+     	.."values (?,0,0,0,0,0,0,0,0,1,?,1,3)"
+     local res,err= DBI.Do(conn, query, ip, ip)
      if not res then sqlerror=err end
+     conn:commit()
    else
      x= {name=res.name, range={{res.from1,res.to1},{res.from2,res.to2},{res.from3,res.to3},{res.from4,res.to4}}, 
      	seat=res.seat, mealpage=res.mealpage, rows=res.rows}
    end
-   if curs then curs:close() end
+   stmt:close()
    conn:close()
    return x
 end
 
 function setvars(ip,vars)
-   local conn= env:connect(database)
-   local query= "update users set name='"..vars.name.."',from1="..tostring(vars.range[1][1])
-   	..",to1="..tostring(vars.range[1][2])
-   	..",from2="..tostring(vars.range[2][1])
-   	..",to2="..tostring(vars.range[2][2])
-   	..",from3="..tostring(vars.range[3][1])
-   	..",to3="..tostring(vars.range[3][2])
-   	..",from4="..tostring(vars.range[4][1])
-   	..",to4="..tostring(vars.range[4][2])
-   	..",seat="..tostring(vars.seat) 
-   	..",rows="..tostring(vars.rows)
-   	..",mealpage="..tostring(vars.mealpage) 
-   	.." where ip='"..ip.."'"
-   local res,err= conn:execute(query)
-   if not res then sqlerror=err end
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local res,err= DBI.Do(conn, "update users set name=?, from1=?,to1=?,from2=?,to2=?,"
+   	.."from3=?,to3=?, from4=?,to4=?, seat=?,rows=?,mealpage=? "
+   	.."where ip=?",
+   		vars.name, 
+   		vars.range[1][1], vars.range[1][2],
+   		vars.range[2][1], vars.range[2][2],
+   		vars.range[3][1], vars.range[3][2],
+   		vars.range[4][1], vars.range[4][2],
+   		vars.seat, vars.rows, vars.mealpage, ip)
+   if not res then sqlerror=err 
+   else conn:commit()
+   end
    conn:close()
 end
 
@@ -208,18 +211,17 @@ function selectseat_widget(self,vars)
 end
 
 function order_statistics(seat)
-   local conn= env:connect(database)
+   local conn= assert(DBI.Connect("SQLite3", database))
    local res= os.time()
    local open=0
-   local query="select meal,rowid,ready from orders where delivered is null and seat="..tostring(seat).." order by age"
-   local res,err= conn:execute(query)
+   local query="select meal,rowid,ready from orders where delivered is null and seat=? order by age"
+   local res,err= conn:prepare(query)
    local restable={}
    if not res then sqlerror=err 
    else
-     local res2=res:fetch({},"a")
-     while res2 do
+     res:execute(seat)
+     for res2 in res:rows(true) do
        restable[#restable+1]={ meal=res2.meal, rowid=res2.rowid, ready=res2.ready }
-       res2=res:fetch({},"a")
      end
      res:close()
    end
@@ -375,11 +377,11 @@ app:get("seat", "/seat", function(self)
 end)
 
 function store_order(name,seat,meal)
-   local conn= env:connect(database)
+   local conn= assert(DBI.Connect("SQLite3", database))
    local now= os.time()
-   local query="insert into orders (age,name,seat,meal) "
-     	.."values ("..tostring(now)..",'"..name.."',"..tostring(seat)..","..tostring(meal)..")"
-   local res,err= conn:execute(query)
+   local query="insert into orders (age,name,seat,meal) values (?,?,?,?)"
+   local res,err= DBI.Do(conn, query, now, name, seat, meal)
+   conn:execute(query)
    if not res then sqlerror=err end
    conn:close()
 end
@@ -392,23 +394,25 @@ app:get("order", "/order", function(self)
 end)
 
 function read_deliveries(vars)
-   local seats = "seat between "..tostring(vars.range[1][1]).." and "..tostring(vars.range[1][2])
+   local args={ vars.range[1][1],vars.range[1][2] }
+   local seats = "seat between ? and ?"
    for i=2,rangesize do
      if vars.range[i][1]>0 then
-       seats= seats.." or seat between "..tostring(vars.range[i][1]).." and "..tostring(vars.range[i][2])
+       seats= seats.." or seat between ? and ?"
+       table.insert(args, vars.range[i][1])
+       table.insert(args, vars.range[i][2])
      end
    end
    local restable={}
-   local conn= env:connect(database)
+   local conn= assert(DBI.Connect("SQLite3", database))
    local query="select rowid,seat,meal from orders where ready is not null and delivered is null and ("..seats
    	..") order by age"
-   local res,err= conn:execute(query)
+   local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     local res2=res:fetch({},"a")
-     while res2 do
+     res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     for res2 in res:rows(true) do
        restable[#restable+1]=res2
-       res2=res:fetch({},"a")
      end
      res:close()
    end
@@ -421,11 +425,12 @@ function deliver_display(self,lastid)
   local open= read_deliveries(vars)
   local lastinfo={}
   if lastid then
-   local conn= env:connect(database)
-   local curs,err=conn:execute("select seat,meal from orders where rowid="..tostring(lastid))
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local curs,err=conn:prepare("select seat,meal from orders where rowid=?")
    if not curs then sqlerror=err
    else
-     lastinfo=curs:fetch({},"a")
+     curs:execute(lastid)
+     lastinfo=curs:fetch(true)
      curs:close()
    end
    conn:close()
@@ -468,39 +473,40 @@ end
 app:get("deliver", "/deliver", deliver_display)
 
 function read_payments(vars)
-   local seats = "seat between "..tostring(vars.range[1][1]).." and "..tostring(vars.range[1][2])
+   local args={ vars.range[1][1],vars.range[1][2] }
+   local seats = "seat between ? and ?"
    for i=2,rangesize do
      if vars.range[i][1]>0 then
-       seats= seats.." or seat between "..tostring(vars.range[i][1]).." and "..tostring(vars.range[i][2])
+       seats= seats.." or seat between ? and ?"
+       table.insert(args, vars.range[i][1])
+       table.insert(args, vars.range[i][2])
      end
    end
    local restable={}
    local selected={}
-   local conn= env:connect(database)
+   local conn= assert(DBI.Connect("SQLite3", database))
    local query="select seat,meal from orders where delivered is not null and paid is null and ("..seats
    	..") order by seat"
-   local res,err= conn:execute(query)
+   local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     local res2=res:fetch({},"a")
-     while res2 do
+     res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     for res2 in res:rows(true) do
        restable[res2.seat]= (restable[res2.seat] or 0.0)+ preis[res2.meal]
-       res2=res:fetch({},"a")
      end
      res:close()
    end
    local selsum=0
-   query="select distinct seat from payselection join orders on payselection.row=orders.rowid where ip='"..ngx.var.remote_addr.."'"
-   res,err= conn:execute(query)
+   query="select distinct seat from payselection join orders on payselection.row=orders.rowid where ip=?"
+   res,err= conn:prepare(query)
    if not res then sqlerror=err
    else
-     local res2=res:fetch({},"n")
-     while res2 do
+     res:execute(ngx.var.remote_addr)
+     for res2 in res:rows() do
        if restable[res2[1]] then
          selected[res2[1]]= true
          selsum= selsum+restable[res2[1]]
        end
-       res2=res:fetch({},"n")
      end
      res:close()
    end      
@@ -556,25 +562,27 @@ app:get("pay", "/pay", pay_display)
 
 app:get("paid", "/paid", function(self)
   local seat = tonumber(self.params.seat)
-  local conn= env:connect(database)
-  local query="select count(row) from payselection join orders on payselection.row=orders.rowid where ip='"..ngx.var.remote_addr.."' and seat="..tostring(seat)
-  local res,err= conn:execute(query)
+  local conn= assert(DBI.Connect("SQLite3", database))
+  local query="select count(row) from payselection join orders on payselection.row=orders.rowid where ip=? and seat=?"
+  local res,err= conn:prepare(query)
   if not res then sqlerror=err
   else
-    local res2=res:fetch({},"n")
+    res:execute(ngx.var.remote_addr, seat)
+    local res2 = res:fetch()
     res:close()
 --sqlerror="Paid res "..res2[1]
     if res2[1]>0 then
-      query= "delete from payselection where ip='"..ngx.var.remote_addr.."' and exists(select 1 from orders where seat="..tostring(seat).." and orders.rowid=payselection.row)"
-      local res,err= conn:execute(query)
+      query= "delete from payselection where ip=? and exists(select 1 from orders where seat=? and orders.rowid=payselection.row)"
+      local res,err= DBI.Do(conn, query, ngx.var.remote_addr, seat)
 --sqlerror=sqlerror.." "..query
       if not res then sqlerror=err end
     else
-      query= "insert into payselection select '"..ngx.var.remote_addr.."',rowid from orders where seat="..tostring(seat).." and paid is null and delivered is not null"
-      local res,err= conn:execute(query)
+      query= "insert into payselection select ?,rowid from orders where seat=? and paid is null and delivered is not null"
+      local res,err= DBI.Do(conn, query, ngx.var.remote_addr, seat)
 --sqlerror=sqlerror.." "..query
       if not res then sqlerror=err end
     end
+    conn:commit()
     res:close()
   end      
   conn:close()
@@ -582,20 +590,21 @@ app:get("paid", "/paid", function(self)
 end)
 
 app:get("paidconfirm", "/paidconfirm", function(self)
-  local conn= env:connect(database)
+  local conn= assert(DBI.Connect("SQLite3", database))
   local now= os.time()
-  local query="update orders set paid="..tostring(now).." where exists (select 1 from payselection where ip='"..ngx.var.remote_addr.."' and payselection.row=orders.rowid)"
-  local res,err= conn:execute(query)
+  local query="update orders set paid=? where exists (select 1 from payselection where ip=? and payselection.row=orders.rowid)"
+  local res,err= DBI.Do(conn,query,now,ngx.var.remote_addr)
   if not res then sqlerror=query..": "..err end
-  query="delete from payselection where ip='"..ngx.var.remote_addr.."'"
-  res,err= conn:execute(query)
+  query="delete from payselection where ip=?"
+  res,err= DBI.Do(conn,query,ngx.var.remote_addr)
   if not res then sqlerror=query..": "..err end
   query="insert into completed select * from orders where paid is not null"
-  res,err= conn:execute(query)
+  res,err= DBI.Do(conn,query)
   if not res then sqlerror=query..": "..err end
   query="delete from orders where paid is not null"
-  res,err= conn:execute(query)
+  res,err= DBI.Do(conn,query)
   if not res then sqlerror=query..": "..err end
+  conn:commit()
   conn:close()
   return pay_display(self)
 end)
@@ -604,9 +613,11 @@ app:get("delivered", "/delivered", function(self)
   local rowid = tonumber(self.params.rowid)
   local conn= env:connect(database)
   local now= os.time()
-  local query="update orders set delivered="..tostring(now).." where rowid="..tostring(rowid)
-  local res,err= conn:execute(query)
-  if not res then sqlerror=err end
+  local query="update orders set delivered=? where rowid=?"
+  --..tostring(now).." where rowid="..tostring(rowid)
+  local res,err= DBI.Do(conn,query, now,rowid)
+  if not res then sqlerror=err 
+  else conn:commit() end
   conn:close()
   return deliver_display(self,rowid)
 end)
@@ -654,17 +665,20 @@ end
 
 app:get("confirm", "/confirm", function(self)
   local rowid = tonumber(self.params.rowid)
-  local conn= env:connect(database)
+  local conn= assert(DBI.Connect("SQLite3", database))
   local now= os.time()
-  local query="update orders set ready="..tostring(now).." where rowid="..tostring(rowid)
-  local res,err= conn:execute(query)
+  local query="update orders set ready=? where rowid=?"
+  local res,err= DBI.Do(conn,query,now,rowid)
+  conn:commit()
   if not res then sqlerror=err end
-  local query="select name,meal from orders where rowid="..tostring(rowid)
-  local res,err= conn:execute(query)
+  local query="select name,meal from orders where rowid=?"
+  local res,err= conn:prepare(query)
   local name,meal
   if not res then sqlerror=err
   else
-    name,meal = res:fetch()
+    res:execute(rowid)
+    local res2= res:fetch()
+    name,meal = res2[1], res2[2]
     res:close()
   end
   conn:close()
@@ -673,11 +687,12 @@ end)
 
 app:get("cancel", "/cancel", function(self)
   local rowid = tonumber(self.params.rowid)
-  local conn= env:connect(database)
+  local conn= assert(DBI.Connect("SQLite3", database))
   local now= os.time()
-  local query="delete from orders where rowid="..tostring(rowid)
-  local res,err= conn:execute(query)
-  if not res then sqlerror=err end
+  local query="delete from orders where rowid=?"
+  local res,err= DBI.Do(conn, query, rowid)
+  if not res then sqlerror=err 
+  else conn:commit() end
   conn:close()
   local vars= getvars(ngx.var.remote_addr)
   return self:html(selectmeal_widget(self,vars))
@@ -686,16 +701,15 @@ end)
 function read_orders()
    local restable={}
    local amount={}
-   local conn= env:connect(database)
+   local conn= assert(DBI.Connect("SQLite3", database))
    local query="select rowid,age,name,meal from orders where ready is null order by age"
-   local res,err= conn:execute(query)
+   local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     local res2=res:fetch({},"a")
-     while res2 do
+     res:execute()
+     for res2 in res:rows(true) do
        restable[#restable+1]=res2
        amount[res2.meal] = (amount[res2.meal] or 0)+1
-       res2=res:fetch({},"a")
      end
      res:close()
    end
