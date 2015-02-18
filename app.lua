@@ -381,8 +381,7 @@ function store_order(name,seat,meal)
    local now= os.time()
    local query="insert into orders (age,name,seat,meal) values (?,?,?,?)"
    local res,err= DBI.Do(conn, query, now, name, seat, meal)
-   conn:execute(query)
-   if not res then sqlerror=err end
+   if not res then sqlerror=err else conn:commit() end
    conn:close()
 end
 
@@ -410,7 +409,12 @@ function read_deliveries(vars)
    local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     --sqlerror= query..":"..tostring(args[1])..","..tostring(args[2])
+     if not args[3] then res:execute(args[1],args[2])
+     elseif not args[5] then res:execute(args[1],args[2],args[3],args[4])
+     elseif not args[7] then res:execute(args[1],args[2],args[3],args[4],args[5],args[6])
+     else res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     end
      for res2 in res:rows(true) do
        restable[#restable+1]=res2
      end
@@ -490,7 +494,11 @@ function read_payments(vars)
    local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     if not args[3] then res:execute(args[1],args[2])
+     elseif not args[5] then res:execute(args[1],args[2],args[3],args[4])
+     elseif not args[7] then res:execute(args[1],args[2],args[3],args[4],args[5],args[6])
+     else res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     end
      for res2 in res:rows(true) do
        restable[res2.seat]= (restable[res2.seat] or 0.0)+ preis[res2.meal]
      end
@@ -611,7 +619,7 @@ end)
 
 app:get("delivered", "/delivered", function(self)
   local rowid = tonumber(self.params.rowid)
-  local conn= env:connect(database)
+  local conn= assert(DBI.Connect("SQLite3", database))
   local now= os.time()
   local query="update orders set delivered=? where rowid=?"
   --..tostring(now).." where rowid="..tostring(rowid)
