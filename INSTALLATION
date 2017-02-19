@@ -1,0 +1,4 @@
+- install nginx sqlite3
+- install luarocks
+- luarocks install lapis
+- create /var/local/meals/meals.db with proper rights
