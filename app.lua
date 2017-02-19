@@ -17,36 +17,59 @@ local fontsize=8
 local fontsize_meals=fontsize-1
 local fontsize_seats=fontsize+1
 local fontsize_pay=fontsize+1
+local imgsize=50
 
+goods={{"Fl. Rotwein", 12.5, "rotwein_flasche.jpg" },
+	{"Glas Rotwein", 3, "rotwein-glas.jpg" },
+	{"Fl. Weißwein", 12.5, "weisswein_flasche.jpg" },
+	{"Glas Weißwein", 3, "weissglas.jpg" },
+	{"Fl. Sekt", 8.5, "sektfl.jpg" },
+	{"Glas Sekt", 2.5, "sektglas.jpeg" },
+	{"Pils", 2.5, "pils.jpg" },
+	{"Kölsch", 2.5, "koelsch.jpg" },
+	{"Alt", 2.5, "altbier.jpg" },
+	{"alkfrei", 2.5, "alkoholfrei.jpg" },
+	--"Korn", "Weinbrand",
+	{"Tequila", 1.5, "Tequila.jpg" },
+	{"Vodka", 1.5, "Vodka.png" },
+	{"Klopfer", 1.5, "Klopfer.png" },
+	{"Shot", 1.5, "Shot.png" },
+	{"Fl. Wasser", 2.5, "FWasser.png" },
+	{"Glas Wasser", 0.5, "GWasser.png" },
+	{"Cola", 1, "cola.png" },
+	{"Fanta", 1, "Fanta.png" },
+	{"Sprite", 1, "Sprite.png" }, 
+	--"O-Saft","A-Saft", 
+	{"Tee", 1, "Tee.png" }, 
+	{"Kaffee", 1.5, "Kaffee.png" },
+	{"Cocktail", 5.5, "Cocktail.png" },
+
+	{"Wurst+Brot", 3, "WurstBrot.png" },
+	{"Wurst+Kart.", 4.5, "WurstKart.png"},
+	{"Schnitzel+Brot", 4, "SchnitzelBrot.png"},
+	{"Schnitzel+Kart.", 5.5, "SchnitzelKart.png"},
+	{"Frikad.+Brot", 3.5, "FrikadBrot.png" },
+	{"Frikad.+Kart.", 5, "FrikadKart.png"},
+	{"Bratling+Kart.", 5, "BratlKart.png"},
+	{"Gulaschsuppe", 3, "Gulaschs.png"},
+	{"Rote Grütze", 2.5, "RoteGrue.png"},
+	{"Chips", 1, "Chips.png"},
+	{"Salzstangen", 1, "Salzstangen.png"},
+	{"Brezel",1, "Brezel.png"},
+}
 --users={}
-essen={"Fl. Rotwein", "Fl. Weißwein", "Glas Rotwein", 
-	"Glas Weißwein", "Fl. Sekt", "Glas Sekt",
-	"Pils", "Kölsch", "Alt",
-	"alkfrei", --"Korn", "Weinbrand",
-	"Tequila", "Vodka", "Klopfer", "Shot",
-	"Fl. Wasser", "Glas Wasser", "Cola",
-	"Fanta", "Sprite", --"O-Saft","A-Saft", 
-	"Tee", "Kaffee", "Cocktail",
+essen={}
+preis={}
+image={}
+
+for i,j in ipairs(goods) do
+	essen[i]=j[1]
+	preis[i]=j[2]
+	image[i]=j[3]
+end
 	
-	"Wurst+Brot", "Wurst+Kart.","Schnitzel+Brot",
-	"Schnitzel+Kart.","Frikad.+Brot","Frikad.+Kart.",
-	"Gulaschsuppe", "Rote Grütze", "Chips",
-	"Salzstangen", "Brezel"
-	 }
-preis={11.5, 11.5, 2,
-	2,7,2.5,
-	2.5,2.5,2.5,
-	2.5,--1,1,
-	1.5,1.5,1.5,1.5,
-	2.5,0.75,1,
-	1,1,--1,1,
-	1,1.5, 4.5,
-	
-	3,4.5,4,
-	5.5,3.5,5,
-	3,2.5,1,
-	1,1
- }
+image={
+}
 
 function getvars(ip)
    local conn= assert(DBI.Connect("SQLite3", database))
@@ -257,7 +280,12 @@ function selectmeal_widget(self,vars)
             tr(function() 
             	for j=1,columns do
                   td({align="center",bgcolor="lightgreen"},function()
-                  	a({href=self:url_for("order").."?meal="..tostring(pagestart+i*columns-columns+j)},essen[pagestart+i*columns-columns+j])
+                  	a({href=self:url_for("order").."?meal="..tostring(pagestart+i*columns-columns+j)},
+                  		essen[pagestart+i*columns-columns+j])
+--                  	function()
+--                  		img({src="/static/"..image[pagestart+i*columns-columns+j],
+--                  		alt=essen[pagestart+i*columns-columns+j],width=imgsize,height=imgsize})
+--                  	end)
                   end)
                 end
             end)
@@ -265,7 +293,8 @@ function selectmeal_widget(self,vars)
           tr(function() 
               for j=1,columns-1 do
                 td({align="center",bgcolor="lightgreen"},function()
-                      a({href=self:url_for("order").."?meal="..tostring(pagestart+vars.rows*columns-columns+j)},essen[pagestart+vars.rows*columns-columns+j])
+                      a({href=self:url_for("order").."?meal="..tostring(pagestart+vars.rows*columns-columns+j)},
+                      		essen[pagestart+vars.rows*columns-columns+j])
                 end)
               end
               td({align="center"},function()

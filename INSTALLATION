@@ -1,4 +1,9 @@
-- install nginx sqlite3
+- install nginx sqlite3-dev sqlite3
 - install luarocks
 - luarocks install lapis
 - create /var/local/meals/meals.db with proper rights
+- luarocks install luasql-sqlite3
+- luarocks install luadbi-sqlite3
+- download and install openresty https://openresty.org/en/download.html
+- run "lapis server production" and connect to http://127.0.0.1/
+- overview is available at http://127.0.0.1/kitchen
