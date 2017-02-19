@@ -109,6 +109,66 @@ local function setvars(ip,vars)
    conn:close()
 end
 
+local function seat_clause(vars)
+   local args={ vars.range[1][1],vars.range[1][2] }
+   local seats = "seat between ? and ?"
+   for i=2,rangesize do
+     if vars.range[i][1]>0 then
+       seats= seats.." or seat between ? and ?"
+       table.insert(args, vars.range[i][1])
+       table.insert(args, vars.range[i][2])
+     end
+   end
+   return seats,args
+end
+
+local function execute_varargs(res,args)
+     if not args[3] then res:execute(args[1],args[2])
+     elseif not args[5] then res:execute(args[1],args[2],args[3],args[4])
+     elseif not args[7] then res:execute(args[1],args[2],args[3],args[4],args[5],args[6])
+     else res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
+     end
+end
+
+local function has_deliveries(vars)
+   local seats,args = seat_clause(vars)
+   local count=false
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local query="select 1 from orders where ready is not null and delivered is null and ("..seats..") limit 1"
+   local res,err= conn:prepare(query)
+   if not res then sqlerror=err 
+   else
+     execute_varargs(res,args)
+     if res:fetch(false) then count=true end
+--     print("has deliveries ",count," ")
+     res:close()
+   end
+   conn:close()
+   return count
+end
+
+local function has_payments(vars)
+   local seats,args = seat_clause(vars)
+   local count=false
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local query="select 1 from orders where delivered is not null and paid is null and ("..seats..") limit 1"
+   local res,err= conn:prepare(query)
+   if not res then sqlerror=err 
+   else
+     execute_varargs(res,args)
+     if res:fetch(false) then count=true end
+     res:close()
+   end
+   conn:close()
+   return count
+end
+
+local function highlight(text,yes)
+--   print("highlight ",text," ",yes)
+   if yes then return "->"..text.."<-" end
+   return text
+end
+
 app:get("/", function(self)
   self.title="Login"
   return self:html(function()
@@ -162,6 +222,8 @@ end
 
 local function selectseat_widget(self,vars)
     local list= create_seatlist(vars)
+    local deliveries=has_deliveries(vars)
+    local payments=has_payments(vars)
     local seatcols= 2*columns
     local elems_page= seatcols*vars.rows-1
     -- complete to 9 elements
@@ -194,10 +256,10 @@ local function selectseat_widget(self,vars)
           tr(function() 
                   td({align="center",colspan="2"},"Platz")
                   td({align="center",colspan="2"},function()
-                  	a({href=self:url_for("deliver")},"Liefern")
+                  	a({href=self:url_for("deliver")},highlight("Liefern",deliveries))
                     end)
                   td({align="center",colspan="2",bgcolor="red"},function()
-                  	a({href=self:url_for("pay")},"Zahlen") 
+                  	a({href=self:url_for("pay")},highlight("Zahlen",payments)) 
                     end)
           end)
           for i=1,vars.rows-1 do
@@ -253,6 +315,8 @@ local function order_statistics(seat)
 end
 
 local function selectmeal_widget(self,vars)
+    local deliveries=has_deliveries(vars)
+    local payments=has_payments(vars)
     local elems_page = columns*vars.rows-1
     local pagestart=math.ceil((vars.mealpage-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
@@ -269,10 +333,10 @@ local function selectmeal_widget(self,vars)
                   	a({href=self:url_for("seatpage")},tostring(vars.seat))
                     end)
                   td({align="center"},function()
-                  	a({href=self:url_for("deliver")},"Liefern")
+                  	a({href=self:url_for("deliver")},highlight("Liefern",deliveries))
                     end)
                   td({align="center",bgcolor="red"},function()
-                  	a({href=self:url_for("pay")},"Zahlen") 
+                  	a({href=self:url_for("pay")},highlight("Zahlen",payments)) 
                     end)
           end)
           for i=1,vars.rows-1 do
@@ -421,15 +485,7 @@ app:get("order", "/order", function(self)
 end)
 
 local function read_deliveries(vars)
-   local args={ vars.range[1][1],vars.range[1][2] }
-   local seats = "seat between ? and ?"
-   for i=2,rangesize do
-     if vars.range[i][1]>0 then
-       seats= seats.." or seat between ? and ?"
-       table.insert(args, vars.range[i][1])
-       table.insert(args, vars.range[i][2])
-     end
-   end
+   local seats,args = seat_clause(vars)
    local restable={}
    local conn= assert(DBI.Connect("SQLite3", database))
    local query="select rowid,seat,meal from orders where ready is not null and delivered is null and ("..seats
@@ -437,12 +493,8 @@ local function read_deliveries(vars)
    local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
+     execute_varargs(res,args)
      --sqlerror= query..":"..tostring(args[1])..","..tostring(args[2])
-     if not args[3] then res:execute(args[1],args[2])
-     elseif not args[5] then res:execute(args[1],args[2],args[3],args[4])
-     elseif not args[7] then res:execute(args[1],args[2],args[3],args[4],args[5],args[6])
-     else res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
-     end
      for res2 in res:rows(true) do
        restable[#restable+1]=res2
      end
@@ -454,6 +506,7 @@ end
 
 local function deliver_display(self,lastid)
   local vars= getvars(ngx.var.remote_addr)
+  local payments=has_payments(vars)
   local open= read_deliveries(vars)
   local lastinfo={}
   if lastid then
@@ -479,7 +532,7 @@ local function deliver_display(self,lastid)
           	a({href=self:url_for("deliver")}, tostring(#open).." Lieferungen")
             end)
           td({align="center",bgcolor="red"},function()
-                a({href=self:url_for("pay")},"Zahlen") 
+                a({href=self:url_for("pay")},highlight("Zahlen",payments)) 
             end)
           if lastid then
               tr(function() 
@@ -505,15 +558,7 @@ end
 app:get("deliver", "/deliver", deliver_display)
 
 local function read_payments(vars)
-   local args={ vars.range[1][1],vars.range[1][2] }
-   local seats = "seat between ? and ?"
-   for i=2,rangesize do
-     if vars.range[i][1]>0 then
-       seats= seats.." or seat between ? and ?"
-       table.insert(args, vars.range[i][1])
-       table.insert(args, vars.range[i][2])
-     end
-   end
+   local seats,args= seat_clause(vars)
    local restable={}
    local selected={}
    local conn= assert(DBI.Connect("SQLite3", database))
@@ -522,11 +567,7 @@ local function read_payments(vars)
    local res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
-     if not args[3] then res:execute(args[1],args[2])
-     elseif not args[5] then res:execute(args[1],args[2],args[3],args[4])
-     elseif not args[7] then res:execute(args[1],args[2],args[3],args[4],args[5],args[6])
-     else res:execute(args[1],args[2],args[3],args[4],args[5],args[6],args[7],args[8])
-     end
+     execute_varargs(res,args)
      for res2 in res:rows(true) do
        restable[res2.seat]= (restable[res2.seat] or 0.0)+ preis[res2.meal]
      end
@@ -557,6 +598,7 @@ end
 local function pay_display(self)
   local vars= getvars(ngx.var.remote_addr)
   local topay,selsum= read_payments(vars)
+  local deliveries=has_deliveries(vars)
   self.title="Bezahlen"
   return self:html(function()
 	if sqlerror then text(sqlerror) end
@@ -566,7 +608,7 @@ local function pay_display(self)
                 a({href=self:url_for("seatpage")},"Bestellen")
             end)
           td({align="center"},function()
-                a({href=self:url_for("deliver")},"Liefern")
+                a({href=self:url_for("deliver")},highlight("Liefern",deliveries))
             end)
           td({align="center",bgcolor="red"},function()
                 a({href=self:url_for("paidconfirm")},string.format("%.2f€ erhalten",selsum))
