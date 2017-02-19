@@ -2,24 +2,22 @@ local lapis = require("lapis")
 local app = lapis.Application()
 local encoding = require("lapis.util.encoding")
 
---local database = require("luasql.sqlite3")
---local env = database.sqlite3()
 local DBI = require('DBI')
 
 local sqlerror
 
 local columns=3
---local rows=3
+local maxseat=333
 local database="/var/local/meals/meals.db"
 local rangesize=4
---local elems_page = columns*rows-1
+local max
 local fontsize=8
 local fontsize_meals=fontsize-1
 local fontsize_seats=fontsize+1
 local fontsize_pay=fontsize+1
 local imgsize=50
 
-goods={{"Fl. Rotwein", 12.5, "rotwein_flasche.jpg" },
+local goods={{"Fl. Rotwein", 12.5, "rotwein_flasche.jpg" },
 	{"Glas Rotwein", 3, "rotwein-glas.jpg" },
 	{"Fl. Weißwein", 12.5, "weisswein_flasche.jpg" },
 	{"Glas Weißwein", 3, "weissglas.jpg" },
@@ -57,10 +55,9 @@ goods={{"Fl. Rotwein", 12.5, "rotwein_flasche.jpg" },
 	{"Salzstangen", 1, "Salzstangen.png"},
 	{"Brezel",1, "Brezel.png"},
 }
---users={}
-essen={}
-preis={}
-image={}
+local essen={}
+local preis={}
+local image={}
 
 for i,j in ipairs(goods) do
 	essen[i]=j[1]
@@ -68,10 +65,7 @@ for i,j in ipairs(goods) do
 	image[i]=j[3]
 end
 	
-image={
-}
-
-function getvars(ip)
+local function getvars(ip)
    local conn= assert(DBI.Connect("SQLite3", database))
    local stmt,err= conn:prepare("select name,from1,to1,from2,to2,from3,to3,from4,to4,seat,mealpage,rows "
    	.."from users where ip=?")
@@ -98,7 +92,7 @@ function getvars(ip)
    return x
 end
 
-function setvars(ip,vars)
+local function setvars(ip,vars)
    local conn= assert(DBI.Connect("SQLite3", database))
    local res,err= DBI.Do(conn, "update users set name=?, from1=?,to1=?,from2=?,to2=?,"
    	.."from3=?,to3=?, from4=?,to4=?, seat=?,rows=?,mealpage=? "
@@ -119,15 +113,15 @@ app:get("/", function(self)
   self.title="Login"
   return self:html(function()
     local vars= getvars(ngx.var.remote_addr)
-   element("font", {size=fontsize}, function()
+   element("font", {size=fontsize+4}, function()
     form({action=self:url_for("login")}, function()
         text("Name")
     	input{type="text", name="name", value=vars.name}
     	br()
     	for i=1,rangesize do
-          input{type="number", size="3", maxlength="3", name="from"..tostring(i), value=tostring(vars.range[i][1]), min=0, max=120}
+          input{type="number", size="3", maxlength="3", name="from"..tostring(i), value=tostring(vars.range[i][1]), min=0, max=maxseat}
           text("-")
-          input{type="number", size="3", maxlength="3", name="to"..tostring(i), value=tostring(vars.range[i][2]), min=0, max=120}
+          input{type="number", size="3", maxlength="3", name="to"..tostring(i), value=tostring(vars.range[i][2]), min=0, max=maxseat}
           br()
     	end
     	text("Zeilen ")
@@ -140,7 +134,7 @@ app:get("/", function(self)
   end)
 end)
 
-function table_print (tt,depth)
+local function table_print (tt,depth)
   local res=""
   if type(tt) == "table" and (not depth or depth>1) then
     res=res.."{"
@@ -154,7 +148,7 @@ function table_print (tt,depth)
   end
 end
 
-function create_seatlist(vars)
+local function create_seatlist(vars)
   local res={}
   for i=1,rangesize do
     if vars.range[i][1] and vars.range[i][1]>0 then
@@ -166,24 +160,28 @@ function create_seatlist(vars)
   return res
 end
 
-function selectseat_widget(self,vars)
+local function selectseat_widget(self,vars)
     local list= create_seatlist(vars)
     local seatcols= 2*columns
     local elems_page= seatcols*vars.rows-1
     -- complete to 9 elements
-    local missing= seatcols*vars.rows-#list
+    local missing= elems_page-#list
+    --print(" list ",#list," missing ",missing)
     for i=1,missing do 
       list[#list+1]=list[i]
     end
     local posinlist=1
+    --print(" #list ",#list," seat ",vars.seat)
     for i=1,#list do
       if vars.seat>=list[i] then 
         posinlist=i
       end
     end
-    local pagestart=math.ceil((posinlist-1)/(elems_page))*(elems_page)
+    local pagestart=math.floor((posinlist-1)/(elems_page))*(elems_page)
+    --print(" posinlist ",posinlist," pagestart ",pagestart)
     -- pagestart starts at 0
     if pagestart+elems_page>#list then pagestart=#list-(elems_page) end
+    --print(" pagestart ",pagestart," elems_page ",elems_page," ")
     self.title="Platzwahl"
 --    self.res:add_header("HandheldFriendly", "true")
 --    self.res:add_header("viewport", "width=device-width, maximum-scale=1.0, user-scalable=yes")
@@ -220,8 +218,9 @@ function selectseat_widget(self,vars)
                 td({align="center"},function()
        			local newstart=pagestart+seatcols*vars.rows
        			--newstart starts at 1
+       			--print(" pagestart ",pagestart," newstart ",newstart)
        			if newstart>#list then newstart=1
-       			elseif newstart+elems_page>#list then newstart=#list-(elems_page)+1
+--       			elseif newstart+elems_page>#list then newstart=#list-(elems_page)+1
        			end
 --text("NS "..newstart.." "..elems_page.." "..#list)
                   	a({href=self:url_for("seatpage").."?start="..tostring(list[newstart])},">>")
@@ -233,7 +232,7 @@ function selectseat_widget(self,vars)
     end
 end
 
-function order_statistics(seat)
+local function order_statistics(seat)
    local conn= assert(DBI.Connect("SQLite3", database))
    local res= os.time()
    local open=0
@@ -253,7 +252,7 @@ function order_statistics(seat)
    --string.format("%d offene Bestellungen", open)
 end
 
-function selectmeal_widget(self,vars)
+local function selectmeal_widget(self,vars)
     local elems_page = columns*vars.rows-1
     local pagestart=math.ceil((vars.mealpage-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
@@ -334,7 +333,7 @@ function selectmeal_widget(self,vars)
     end
 end
 
-function canonicalize(t)
+local function canonicalize(t)
   for i=1,rangesize do
     if t[i][1]>t[i][2] then
       t[i][1]=0
@@ -405,7 +404,7 @@ app:get("seat", "/seat", function(self)
   return self:html(selectmeal_widget(self,vars))  
 end)
 
-function store_order(name,seat,meal)
+local function store_order(name,seat,meal)
    local conn= assert(DBI.Connect("SQLite3", database))
    local now= os.time()
    local query="insert into orders (age,name,seat,meal) values (?,?,?,?)"
@@ -421,7 +420,7 @@ app:get("order", "/order", function(self)
   return self:html(selectmeal_widget(self,vars))  
 end)
 
-function read_deliveries(vars)
+local function read_deliveries(vars)
    local args={ vars.range[1][1],vars.range[1][2] }
    local seats = "seat between ? and ?"
    for i=2,rangesize do
@@ -453,7 +452,7 @@ function read_deliveries(vars)
    return restable
 end
 
-function deliver_display(self,lastid)
+local function deliver_display(self,lastid)
   local vars= getvars(ngx.var.remote_addr)
   local open= read_deliveries(vars)
   local lastinfo={}
@@ -505,7 +504,7 @@ end
 
 app:get("deliver", "/deliver", deliver_display)
 
-function read_payments(vars)
+local function read_payments(vars)
    local args={ vars.range[1][1],vars.range[1][2] }
    local seats = "seat between ? and ?"
    for i=2,rangesize do
@@ -555,7 +554,7 @@ function read_payments(vars)
    return restable2,selsum
 end
 
-function pay_display(self)
+local function pay_display(self)
   local vars= getvars(ngx.var.remote_addr)
   local topay,selsum= read_payments(vars)
   self.title="Bezahlen"
@@ -659,10 +658,38 @@ app:get("delivered", "/delivered", function(self)
   return deliver_display(self,rowid)
 end)
 
-function kitchen_display(self,lastname,lastmeal)
+local function format_number(x)
+  local hours=math.floor(x/3600)
+  x=x-hours*3600
+  local min=math.floor(x/60)
+  x=x-min*60
+  return string.format("%d:%02d:%02d", hours, min, x)
+end
+
+local function read_orders()
+   local restable={}
+   local amount={}
+   local conn= assert(DBI.Connect("SQLite3", database))
+   local query="select rowid,age,name,meal from orders where ready is null order by age"
+   local res,err= conn:prepare(query)
+   if not res then sqlerror=err 
+   else
+     res:execute()
+     for res2 in res:rows(true) do
+       restable[#restable+1]=res2
+       amount[res2.meal] = (amount[res2.meal] or 0)+1
+     end
+     res:close()
+   end
+   conn:close()
+   return restable,amount
+end
+
+local function kitchen_display(self,lastname,lastmeal)
   local orders,amount= read_orders()
   local now= os.time()
   self.title="Bestellungen"
+--  print("kitchen\n")
   return self:html(function()
 	if sqlerror then text(sqlerror) end
 --       element("font", {size=fontsize}, function()
@@ -734,33 +761,6 @@ app:get("cancel", "/cancel", function(self)
   local vars= getvars(ngx.var.remote_addr)
   return self:html(selectmeal_widget(self,vars))
 end)
-
-function read_orders()
-   local restable={}
-   local amount={}
-   local conn= assert(DBI.Connect("SQLite3", database))
-   local query="select rowid,age,name,meal from orders where ready is null order by age"
-   local res,err= conn:prepare(query)
-   if not res then sqlerror=err 
-   else
-     res:execute()
-     for res2 in res:rows(true) do
-       restable[#restable+1]=res2
-       amount[res2.meal] = (amount[res2.meal] or 0)+1
-     end
-     res:close()
-   end
-   conn:close()
-   return restable,amount
-end
-
-function format_number(x)
-  local hours=math.floor(x/3600)
-  x=x-hours*3600
-  local min=math.floor(x/60)
-  x=x-min*60
-  return string.format("%d:%02d:%02d", hours, min, x)
-end
 
 app:get("kitchen", "/kitchen", function(self)
   local name
