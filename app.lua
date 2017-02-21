@@ -17,12 +17,12 @@ local fontsize_seats=fontsize+1
 local fontsize_pay=fontsize+1
 local imgsize=50
 
-local goods={{"Fl. Rotwein", 12.5, "rotwein_flasche.jpg" },
+local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg" },
 	{"Glas Rotwein", 3, "rotwein-glas.jpg" },
-	{"Fl. Weißwein", 12.5, "weisswein_flasche.jpg" },
+	{"Fl. Weißwein", 12, "weisswein_flasche.jpg" },
 	{"Glas Weißwein", 3, "weissglas.jpg" },
-	{"Fl. Sekt", 8.5, "sektfl.jpg" },
-	{"Glas Sekt", 2.5, "sektglas.jpeg" },
+	--{"Fl. Sekt", 8.5, "sektfl.jpg" },
+	{"Glas Sekt", 3, "sektglas.jpeg" },
 	{"Pils", 2.5, "pils.jpg" },
 	{"Kölsch", 2.5, "koelsch.jpg" },
 	{"Alt", 2.5, "altbier.jpg" },
