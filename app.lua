@@ -16,6 +16,7 @@ local fontsize_meals=fontsize-1
 local fontsize_seats=fontsize+1
 local fontsize_pay=fontsize+1
 local imgsize=50
+local useimage=false --true
 
 local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg" },
 	{"Glas Rotwein", 3, "rotwein-glas.jpg" },
@@ -324,6 +325,13 @@ local function selectmeal_widget(self,vars)
     local pagestart=math.ceil((vars.mealpage-1)/(elems_page))*(elems_page)
     -- pagestart starts at 0
     if pagestart+elems_page>#essen then pagestart=#essen-(elems_page) end
+    if pagestart<0 then pagestart=0 end
+    local rows_displayed=vars.rows
+    local next_page=1
+    if rows_displayed*columns>=#essen then
+      next_page=0
+      rows_displayed=math.ceil(#essen/columns)
+    end
     self.title="Bestellen"
     return function()
       if sqlerror then text(sqlerror) end
@@ -333,7 +341,7 @@ local function selectmeal_widget(self,vars)
       --'<table width="100%">'
           tr(function() 
                   td({align="center",bgcolor="yellow"},function()
-                  	a({href=self:url_for("seatpage")},tostring(vars.seat))
+                  	a({href=self:url_for("seatpage")},"Tisch "..tostring(vars.seat))
                     end)
                   td({align="center"},function()
                   	a({href=self:url_for("deliver")},highlight("Liefern",deliveries))
@@ -342,21 +350,34 @@ local function selectmeal_widget(self,vars)
                   	a({href=self:url_for("pay")},highlight("Zahlen",payments)) 
                     end)
           end)
-          for i=1,vars.rows-1 do
+          if useimage then
+           for i=1,rows_displayed-next_page do
+            tr(function() 
+            	for j=1,columns do
+                  td({align="center",bgcolor="lightgreen"},function()
+                  	a({href=self:url_for("order").."?meal="..tostring(pagestart+i*columns-columns+j)},
+                  	function()
+                  		img({src="/static/"..image[pagestart+i*columns-columns+j],
+                  		alt=essen[pagestart+i*columns-columns+j],width=imgsize,height=imgsize})
+                  	end)
+                  end)
+                end
+            end)
+           end
+          else
+           for i=1,rows_displayed-next_page do
             tr(function() 
             	for j=1,columns do
                   td({align="center",bgcolor="lightgreen"},function()
                   	a({href=self:url_for("order").."?meal="..tostring(pagestart+i*columns-columns+j)},
                   		essen[pagestart+i*columns-columns+j])
---                  	function()
---                  		img({src="/static/"..image[pagestart+i*columns-columns+j],
---                  		alt=essen[pagestart+i*columns-columns+j],width=imgsize,height=imgsize})
---                  	end)
                   end)
                 end
             end)
+           end
           end
-          tr(function() 
+          if next_page>0 then
+           tr(function() 
               for j=1,columns-1 do
                 td({align="center",bgcolor="lightgreen"},function()
                       a({href=self:url_for("order").."?meal="..tostring(pagestart+vars.rows*columns-columns+j)},
@@ -371,7 +392,8 @@ local function selectmeal_widget(self,vars)
                       end
                       a({href=self:url_for("mealpage").."?start="..tostring(newstart)}," >> ")
                    end)
-          end)
+           end)
+          end
           local stats= order_statistics(vars.seat)
           if #stats>0 then
               tr(function()
