@@ -179,6 +179,8 @@ app:get("/", function(self)
         text("Name")
     	input{type="text", name="name", value=vars.name}
     	br()
+    	text("Tischnummern")
+    	br()
     	for i=1,rangesize do
           input{type="number", size="3", maxlength="3", name="from"..tostring(i), value=tostring(vars.range[i][1]), min=0, max=maxseat}
           text("-")
@@ -186,7 +188,7 @@ app:get("/", function(self)
           br()
     	end
     	text("Zeilen ")
-    	input{type="number", name="rows", value=vars.rows, min=3, max=10 }
+    	input{type="number", name="rows", value=vars.rows, min=3, max=20 }
     	br()
     	input{type="submit", value="Start"}
       end)
