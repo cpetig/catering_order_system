@@ -175,7 +175,7 @@ local function highlight(text,yes)
    return text
 end
 
-app:get("/", function(self)
+local function loginscreen(self)
   self.title="Login"
   return self:html(function()
     local vars= getvars(ngx.var.remote_addr)
@@ -200,7 +200,11 @@ app:get("/", function(self)
     end)
 --      self.res:add_header("HandheldFriendly", "true")
   end)
-end)
+end
+
+app:get("/", loginscreen)
+
+app:get("/start", loginscreen)
 
 local function table_print (tt,depth)
   local res=""
@@ -784,6 +788,7 @@ local function kitchen_display(self,lastname,lastmeal)
             	td("Fertig")
             	td({align="center"},lastname)
                 td({align="center"},essen[lastmeal])
+                td(function() a({href=self:url_for("kitchen_back")},"Rückgängig") end)
             end)
           end
  	  for i=1,#orders do
@@ -837,6 +842,29 @@ local function kitchen_display(self,lastname,lastmeal)
 --        self.res:add_header("viewport", "width=device-width, maximum-scale=1.0, user-scalable=yes")
   end)
 end
+
+app:get("kitchen_back", "/kitchen_back", function(self)
+  local conn= assert(DBI.Connect("SQLite3", database))
+  local query="select rowid,name,meal,ready from orders order by ready desc limit 2"
+  local res,err= conn:prepare(query)
+  local res3={}
+  if not res then sqlerror=err
+  else
+    res:execute()
+--    local report="reported "
+    for res2 in res:rows(true) do
+    	res3[#res3+1]={ rowid=res2.rowid, name=res2.name, meal=res2.meal }
+--    	report=report .. "selected ".. tonumber(res2.rowid).. " "
+    end
+--    error(report)
+    query= "update orders set ready=null where rowid=?"
+    res,err= DBI.Do(conn,query,res3[1].rowid)
+    if not res then sqlerror=query..": "..err end
+  end
+  conn:commit()
+  conn:close()
+  return kitchen_display(self,res3[2].name,res3[2].meal)
+end)
 
 app:get("confirm", "/confirm", function(self)
   local rowid = tonumber(self.params.rowid)
