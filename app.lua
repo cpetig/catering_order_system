@@ -787,18 +787,27 @@ local function kitchen_display(self,lastname,lastmeal)
             tr(function()
             	td("Fertig")
             	td({align="center"},lastname)
-                td({align="center"},essen[lastmeal])
-                td(function() a({href=self:url_for("kitchen_back")},"Rückgängig") end)
+                td({align="center"},function()
+	                text(essen[lastmeal] .. " ")
+                	a({href=self:url_for("kitchen_back")},"(Zurück)") end)
             end)
           end
- 	  for i=1,#orders do
+ 	  for i=1,#orders,2 do
               tr(function() 
-                      td(format_number(now-orders[i].age))
+                      td({align="right"},format_number(now-orders[i].age))
                       td({align="center",bgcolor="yellow"},orders[i].name)
-                      td({align="center",bgcolor=color[gruppe[orders[i].meal]]},essen[orders[i].meal].." (von insges. "..tostring(amount[orders[i].meal])..")")
-                      td({align="center",bgcolor="green"},function()
-                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)},"Fertig")
+                      td({align="left",bgcolor=color[gruppe[orders[i].meal]]}, function()
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)}, essen[orders[i].meal])
+                      	text(" (von insges. "..tostring(amount[orders[i].meal])..")")
                       end)
+                      if orders[i+1] then
+                       td({align="right"},format_number(now-orders[i+1].age))
+                       td({align="center",bgcolor="yellow"},orders[i+1].name)
+                       td({align="left",bgcolor=color[gruppe[orders[i+1].meal]]}, function()
+                         a({href=self:url_for("confirm").."?rowid="..tostring(orders[i+1].rowid)}, essen[orders[i+1].meal])
+                         text(" (von insges. "..tostring(amount[orders[i+1].meal])..")")
+                       end)
+                      end
                  end)
           end
           if #orders<1 and not lastname then
