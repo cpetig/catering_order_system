@@ -755,7 +755,8 @@ local function read_orders_and_waiting(part)
    local amount={}
    local waiting={}
    local conn= assert(DBI.Connect("SQLite3", database))
-   local query="select rowid,age,name,meal from orders where ready is null order by age"
+--   local query="select rowid,age,name,meal from orders where ready is null order by age"
+   local query="select rowid,age,name,meal from orders where ready is null order by meal,name"
    local res,err
   if not part or part==1 then
    res,err= conn:prepare(query)
@@ -814,7 +815,9 @@ local function kitchen_display(self,lastname,lastmeal,part)
                       td({align="center",bgcolor="yellow"},order.name)
                       td({align="left",bgcolor=color[order.meal]}, function()
                       	a({href=self:url_for("confirm").."?rowid="..tostring(order.rowid)}, essen[order.meal])
-                      	text(" (von insges. "..tostring(amount[order.meal])..")")
+                      	if amount[order.meal]>1 then
+                        	text(" (insges. "..tostring(amount[order.meal])..")")
+                        end
                       end)
                     end
                   end
