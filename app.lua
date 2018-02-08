@@ -17,59 +17,65 @@ local fontsize_seats=fontsize+1
 local fontsize_pay=fontsize+1
 local imgsize=50
 local useimage=false --true
+local kitchencolumns=3
 
-local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", 2 },
-	{"Glas Rotwein", 3, "rotwein-glas.jpg", 1 },
-	{"Fl. Weißwein", 12, "weisswein_flasche.jpg", 2 },
-	{"Glas Weißwein", 3, "weissglas.jpg", 1 },
-	--{"Fl. Sekt", 8.5, "sektfl.jpg", 1 },
-	{"Glas Sekt", 3, "sektglas.jpeg", 1 },
-	{"Pils", 2.5, "pils.jpg", 2 },
-	{"Kölsch", 2.5, "koelsch.jpg", 2 },
-	{"Alt", 2.5, "altbier.jpg", 2 },
-	{"alkfrei", 2.5, "alkoholfrei.jpg", 2 },
+local lightgreen= "lightgreen"
+local lime= "lime"
+local lawngreen= "lawngreen"
+local greenyellow= "GreenYellow"
+
+local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", lime },
+	{"Glas Rotwein", 3, "rotwein-glas.jpg", lightgreen },
+	{"Fl. Weißwein", 12, "weisswein_flasche.jpg", lime },
+	{"Glas Weißwein", 3, "weissglas.jpg", lightgreen },
+	--{"Fl. Sekt", 8.5, "sektfl.jpg", lightgreen },
+	{"Glas Sekt", 3, "sektglas.jpeg", lightgreen },
+	{"Pils", 2.5, "pils.jpg", lime },
+	{"Kölsch", 2.5, "koelsch.jpg", lime },
+	{"Alt", 2.5, "altbier.jpg", lime },
+	{"alkfrei", 2.5, "alkoholfrei.jpg", lime },
 	--"Korn", "Weinbrand",
-	{"Tequila", 1.5, "Tequila.jpg",1 },
-	{"Vodka", 1.5, "Vodka.png",1 },
-	{"Klopfer", 1.5, "Klopfer.png",1 },
-	{"Shot", 1.5, "Shot.png",1 },
-	{"Fl. Wasser", 2.5, "FWasser.png",2 },
-	{"Glas Wasser", 0.5, "GWasser.png",1 },
-	{"Cola", 1, "cola.png" ,1},
-	{"Fanta", 1, "Fanta.png",1 },
-	{"Sprite", 1, "Sprite.png",1 }, 
+	{"Tequila", 1.5, "Tequila.jpg",lightgreen },
+	{"Vodka", 1.5, "Vodka.png",lightgreen },
+	{"Klopfer", 1.5, "Klopfer.png",lightgreen },
+	{"Shot", 1.5, "Shot.png",lightgreen },
+	{"Fl. Wasser", 2.5, "FWasser.png",lime },
+	{"Glas Wasser", 0.5, "GWasser.png",lightgreen },
+	{"Cola", 1, "cola.png" ,lightgreen},
+	{"Fanta", 1, "Fanta.png",lightgreen },
+	{"Sprite", 1, "Sprite.png",lightgreen }, 
 	--"O-Saft","A-Saft", 
-	{"Tee", 1, "Tee.png",1 }, 
-	{"Kaffee", 1.5, "Kaffee.png",1 },
-	{"Cocktail", 5.5, "Cocktail.png",1 },
+	{"Tee", 1, "Tee.png",lightgreen }, 
+	{"Kaffee", 1.5, "Kaffee.png",lightgreen },
+	{"Cocktail", 5.5, "Cocktail.png",lightgreen },
 
-	{"Wurst+Brot", 3, "WurstBrot.png",3 },
-	{"Wurst+Kart.", 4.5, "WurstKart.png",3},
-	{"Schnitzel+Brot", 4, "SchnitzelBrot.png",3},
-	{"Schnitzel+Kart.", 5.5, "SchnitzelKart.png",3},
-	{"Frikad.+Brot", 3.5, "FrikadBrot.png",3 },
-	{"Frikad.+Kart.", 5, "FrikadKart.png",3},
-	{"Bratling+Brot", 3.5, "BratlKart.png",3},
-	{"Bratling+Kart.", 5, "BratlKart.png",3},
-	{"Gulaschsuppe", 3, "Gulaschs.png",3},
-	{"Rote Grütze", 2.5, "RoteGrue.png",4},
-	{"Chips", 1, "Chips.png",4},
-	{"Salzstangen", 1, "Salzstangen.png",4},
-	{"Brezel",1, "Brezel.png",4},
+	{"Wurst+Brot", 3, "WurstBrot.png",lawngreen },
+	{"Wurst+Kart.", 4.5, "WurstKart.png",lawngreen},
+	{"Schnitzel+Brot", 4, "SchnitzelBrot.png",lawngreen},
+	{"Schnitzel+Kart.", 5.5, "SchnitzelKart.png",lawngreen},
+	{"Frikad.+Brot", 3.5, "FrikadBrot.png",lawngreen },
+	{"Frikad.+Kart.", 5, "FrikadKart.png",lawngreen},
+	{"Bratling+Brot", 3.5, "BratlKart.png",lawngreen},
+	{"Bratling+Kart.", 5, "BratlKart.png",lawngreen},
+	{"Gulaschsuppe", 3, "Gulaschs.png",lawngreen},
+	{"Rote Grütze", 2.5, "RoteGrue.png",greenyellow},
+	{"Chips", 1, "Chips.png",greenyellow},
+	{"Salzstangen", 1, "Salzstangen.png",greenyellow},
+	{"Brezel",1, "Brezel.png",greenyellow},
 }
 local essen={}
 local preis={}
 local image={}
-local gruppe={}
+local color={}
 
 for i,j in ipairs(goods) do
 	essen[i]=j[1]
 	preis[i]=j[2]
 	image[i]=j[3]
-	gruppe[i]=j[4]
+	color[i]=j[4]
 end
 	
-local color = { "lightgreen", "lime", "lawngreen", "GreenYellow" }
+--local color = { "lightgreen", "lime", "lawngreen", "GreenYellow" }
 
 local function getvars(ip)
    local conn= assert(DBI.Connect("SQLite3", database))
@@ -363,7 +369,7 @@ local function selectmeal_widget(self,vars)
             tr(function() 
             	for j=1,columns do
             	  local index=pagestart+i*columns-columns+j
-                  td({align="center",bgcolor=color[gruppe[index]]},function()
+                  td({align="center",bgcolor=color[index]},function()
                   	a({href=self:url_for("order").."?meal="..tostring(index)},
                   	function()
                   		img({src="/static/"..image[index],
@@ -378,7 +384,7 @@ local function selectmeal_widget(self,vars)
             tr(function() 
             	for j=1,columns do
             	  local index=pagestart+i*columns-columns+j
-                  td({align="center",bgcolor=color[gruppe[index]]},function()
+                  td({align="center",bgcolor=color[index]},function()
                   	a({href=self:url_for("order").."?meal="..tostring(index)},
                   		essen[index])
                   end)
@@ -390,7 +396,7 @@ local function selectmeal_widget(self,vars)
            tr(function() 
               for j=1,columns-1 do
                 local index=pagestart+vars.rows*columns-columns+j
-                td({align="center",bgcolor=color[gruppe[index]]},function()
+                td({align="center",bgcolor=color[index]},function()
                       a({href=self:url_for("order").."?meal="..tostring(index)},
                       		essen[index])
                 end)
@@ -744,13 +750,15 @@ local function format_number(x)
   return string.format("%d:%02d:%02d", hours, min, x)
 end
 
-local function read_orders_and_waiting()
+local function read_orders_and_waiting(part)
    local restable={}
    local amount={}
    local waiting={}
    local conn= assert(DBI.Connect("SQLite3", database))
    local query="select rowid,age,name,meal from orders where ready is null order by age"
-   local res,err= conn:prepare(query)
+   local res,err
+  if not part or part==1 then
+   res,err= conn:prepare(query)
    if not res then sqlerror=err 
    else
      res:execute()
@@ -760,6 +768,8 @@ local function read_orders_and_waiting()
      end
      res:close()
    end
+  end
+  if not part or part==2 then
    query="select name,meal,count(meal) from orders where ready is not null and delivered is null group by name,meal order by name"
    res,err= conn:prepare(query)
    if not res then sqlerror=err 
@@ -770,18 +780,21 @@ local function read_orders_and_waiting()
      end
      res:close()
    end
+  end
    conn:close()
    return restable,amount,waiting
 end
 
-local function kitchen_display(self,lastname,lastmeal)
-  local orders,amount,waiting= read_orders_and_waiting()
+local function kitchen_display(self,lastname,lastmeal,part)
+  local orders,amount,waiting= read_orders_and_waiting(part)
   local now= os.time()
   self.title="Bestellungen"
+  if part==2 then self.title="Lieferungen" end
 --  print("kitchen\n")
   return self:html(function()
 	if sqlerror then text(sqlerror) end
 --       element("font", {size=fontsize}, function()
+       if not part or part==1 then
         element("table", {width="100%"}, function()
           if lastname then
             tr(function()
@@ -792,22 +805,19 @@ local function kitchen_display(self,lastname,lastmeal)
                 	a({href=self:url_for("kitchen_back")},"(Zurück)") end)
             end)
           end
- 	  for i=1,#orders,2 do
+ 	  for i=1,#orders,kitchencolumns do
               tr(function() 
-                      td({align="right"},format_number(now-orders[i].age))
-                      td({align="center",bgcolor="yellow"},orders[i].name)
-                      td({align="left",bgcolor=color[gruppe[orders[i].meal]]}, function()
-                      	a({href=self:url_for("confirm").."?rowid="..tostring(orders[i].rowid)}, essen[orders[i].meal])
-                      	text(" (von insges. "..tostring(amount[orders[i].meal])..")")
+              	  for j=0,kitchencolumns-1 do
+              	    local order=orders[i+j]
+              	    if order then
+                      td({align="right"},format_number(now-order.age))
+                      td({align="center",bgcolor="yellow"},order.name)
+                      td({align="left",bgcolor=color[order.meal]}, function()
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(order.rowid)}, essen[order.meal])
+                      	text(" (von insges. "..tostring(amount[order.meal])..")")
                       end)
-                      if orders[i+1] then
-                       td({align="right"},format_number(now-orders[i+1].age))
-                       td({align="center",bgcolor="yellow"},orders[i+1].name)
-                       td({align="left",bgcolor=color[gruppe[orders[i+1].meal]]}, function()
-                         a({href=self:url_for("confirm").."?rowid="..tostring(orders[i+1].rowid)}, essen[orders[i+1].meal])
-                         text(" (von insges. "..tostring(amount[orders[i+1].meal])..")")
-                       end)
-                      end
+                    end
+                  end
                  end)
           end
           if #orders<1 and not lastname then
@@ -815,9 +825,13 @@ local function kitchen_display(self,lastname,lastmeal)
               text("Keine offenen Bestellungen")
           end
          end)
+        end
+        if not part or part==2 then
          if #waiting>0 then
-          br()
-          text("Auslieferungen")
+          if not part then
+            br()
+            text("Auslieferungen")
+          end
           element("table", {width="100%"}, function()
              local last="."
              for i=1,#waiting do
@@ -841,12 +855,21 @@ local function kitchen_display(self,lastname,lastmeal)
              end
           end)
          end
+         if part==2 and #waiting==0 then
+              -- just to not show an empty page
+              text("Keine offenen Lieferungen")
+         end
+        end
 --        end)
         local param=""
         if lastname then
           param= "?lastmeal="..lastmeal.."&lastname="..encoding.encode_base64(lastname)
         end
-  	self.res:add_header("refresh","5; URL="..self:url_for("kitchen")..param)
+        local urlbase="kitchen"
+        if part==1 then urlbase="kitchen1"
+        elseif part==2 then urlbase="kitchen2"
+        end
+  	self.res:add_header("refresh","5; URL="..self:url_for(urlbase)..param)
   	self.options.content_type="text/html; charset=utf-8"
 --        self.res:add_header("viewport", "width=device-width, maximum-scale=1.0, user-scalable=yes")
   end)
@@ -872,7 +895,7 @@ app:get("kitchen_back", "/kitchen_back", function(self)
   end
   conn:commit()
   conn:close()
-  return kitchen_display(self,res3[2].name,res3[2].meal)
+  return kitchen_display(self,res3[2].name,res3[2].meal,1)
 end)
 
 app:get("confirm", "/confirm", function(self)
@@ -916,6 +939,22 @@ app:get("kitchen", "/kitchen", function(self)
     name= encoding.decode_base64(self.params.lastname)
   end
   return kitchen_display(self, name, tonumber(self.params.lastmeal))
+end)
+
+app:get("kitchen1", "/kitchen1", function(self)
+  local name
+  if self.params.lastname then
+    name= encoding.decode_base64(self.params.lastname)
+  end
+  return kitchen_display(self, name, tonumber(self.params.lastmeal),1)
+end)
+
+app:get("kitchen2", "/kitchen2", function(self)
+  local name
+  if self.params.lastname then
+    name= encoding.decode_base64(self.params.lastname)
+  end
+  return kitchen_display(self, name, tonumber(self.params.lastmeal),2)
 end)
 
 return app
