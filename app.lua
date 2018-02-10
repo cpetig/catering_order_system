@@ -39,15 +39,15 @@ local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", lime },
 	{"Vodka", 1.5, "Vodka.png",lightgreen },
 	{"Klopfer", 1.5, "Klopfer.png",lightgreen },
 	{"Shot", 1.5, "Shot.png",lightgreen },
-	{"Fl. Wasser", 2.5, "FWasser.png",lime },
-	{"Glas Wasser", 0.5, "GWasser.png",lightgreen },
+	{"Fl. Wasser", 4.5, "FWasser.png",lime },
+	{"Glas Wasser", 1, "GWasser.png",lightgreen },
 	{"Cola", 1, "cola.png" ,lightgreen},
 	{"Fanta", 1, "Fanta.png",lightgreen },
 	{"Sprite", 1, "Sprite.png",lightgreen }, 
 	--"O-Saft","A-Saft", 
 	{"Tee", 1, "Tee.png",lightgreen }, 
 	{"Kaffee", 1.5, "Kaffee.png",lightgreen },
-	{"Cocktail", 5.5, "Cocktail.png",lightgreen },
+	{"Cocktail", 5, "Cocktail.png",lightgreen },
 
 	{"Wurst+Brot", 3, "WurstBrot.png",lawngreen },
 	{"Wurst+Kart.", 4.5, "WurstKart.png",lawngreen},
@@ -61,7 +61,7 @@ local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", lime },
 	{"Rote Grütze", 2.5, "RoteGrue.png",greenyellow},
 	{"Chips", 1, "Chips.png",greenyellow},
 	{"Salzstangen", 1, "Salzstangen.png",greenyellow},
-	{"Brezel",1, "Brezel.png",greenyellow},
+	--{"Brezel",1, "Brezel.png",greenyellow},
 }
 local essen={}
 local preis={}
@@ -795,7 +795,7 @@ local function kitchen_display(self,lastname,lastmeal,part)
   return self:html(function()
 	if sqlerror then text(sqlerror) end
 --       element("font", {size=fontsize}, function()
-       if not part or part==1 then
+       if not part or part~=2 then
         element("table", {width="100%"}, function()
           if lastname then
             tr(function()
@@ -814,7 +814,8 @@ local function kitchen_display(self,lastname,lastmeal,part)
                       td({align="right"},format_number(now-order.age))
                       td({align="center",bgcolor="yellow"},order.name)
                       td({align="left",bgcolor=color[order.meal]}, function()
-                      	a({href=self:url_for("confirm").."?rowid="..tostring(order.rowid)}, essen[order.meal])
+                        if not part then part=0 end
+                      	a({href=self:url_for("confirm").."?rowid="..tostring(order.rowid).."&part="..tostring(part)}, essen[order.meal])
                       	if amount[order.meal]>1 then
                         	text(" (insges. "..tostring(amount[order.meal])..")")
                         end
@@ -829,9 +830,9 @@ local function kitchen_display(self,lastname,lastmeal,part)
           end
          end)
         end
-        if not part or part==2 then
+        if not part or part~=1 then
          if #waiting>0 then
-          if not part then
+          if not part or part~=2 then
             br()
             text("Auslieferungen")
           end
@@ -903,6 +904,7 @@ end)
 
 app:get("confirm", "/confirm", function(self)
   local rowid = tonumber(self.params.rowid)
+  local part = tonumber(self.params.part)
   local conn= assert(DBI.Connect("SQLite3", database))
   local now= os.time()
   local query="update orders set ready=? where rowid=?"
@@ -920,7 +922,7 @@ app:get("confirm", "/confirm", function(self)
     res:close()
   end
   conn:close()
-  return kitchen_display(self,name,meal)
+  return kitchen_display(self,name,meal,part)
 end)
 
 app:get("cancel", "/cancel", function(self)
