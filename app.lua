@@ -47,7 +47,8 @@ local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", lime },
 	--"O-Saft","A-Saft", 
 	{"Tee", 1, "Tee.png",lightgreen }, 
 	{"Kaffee", 1.5, "Kaffee.png",lightgreen },
-	{"Cocktail", 5, "Cocktail.png",lightgreen },
+	{"Gin Tonic", 5, "Cocktail.png",lightgreen },
+	{"Havanna Cola", 5, "Cocktail.png",lightgreen },
 
 	{"Wurst+Brot", 3, "WurstBrot.png",lawngreen },
 	{"Wurst+Kart.", 4.5, "WurstKart.png",lawngreen},
@@ -61,6 +62,7 @@ local goods={{"Fl. Rotwein", 12, "rotwein_flasche.jpg", lime },
 	{"Rote Grütze", 2.5, "RoteGrue.png",greenyellow},
 	{"Chips", 1, "Chips.png",greenyellow},
 	{"Salzstangen", 1, "Salzstangen.png",greenyellow},
+	{"Sonderwunsch", 1, "qm.png","grey"},
 	--{"Brezel",1, "Brezel.png",greenyellow},
 }
 local essen={}
